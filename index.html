@@ -451,13 +451,13 @@ function updateVeg(p){
     const h1=hash(x*.13,z*.17),h2=hash(z*.11+3,x*.07),px=x+(h1-.5)*ST,pz=z+(h2-.5)*ST,y=heightAt(px,pz),rv=_rv,t=(y+900)/830;
     if(vC&&valleyEdge(px,pz)>.5){ // dans la vallée peinte : arbres et maisons suivent l'image
       const c=classAt(px,pz);
-      if(c===5){if(nh<MAXH&&h1<.22){const w=rand(24,34),d=rand(20,28),hh=rand(14,22),a=h2*6.28;
+      if(c===5){if(false&&nh<MAXH&&h1<.22){ // villages : déjà peints, pas de maisons 3D par-dessus (critique visuelle)const w=rand(24,34),d=rand(20,28),hh=rand(14,22),a=h2*6.28;
         dummy.position.set(px,y+hh/2,pz);dummy.rotation.set(0,a,0);dummy.scale.set(w,hh,d);dummy.updateMatrix();walls.setMatrixAt(nh,dummy.matrix);
         dummy.position.y=y+hh+w*.27;dummy.scale.set(w*1.25,w,d*1.6);dummy.updateMatrix();roofs.setMatrixAt(nh,dummy.matrix);roofs.setColorAt(nh,roofCols[(h1*97|0)%4]);nh++;}continue;}
-      const pr=c===2?.8:(c===3?.05:0);if(hash(px*.05,pz*.05)>pr)continue;
-      col.copy(greens[(h2*53|0)%5]).multiplyScalar(.8+h1*.3);
+      const pr=c===2?.7:0;if(hash(px*.05,pz*.05)>pr)continue; // arbres seulement dans les forêts peintes
+      col.copy(greens[(h2*53|0)%5]).multiplyScalar(.62+h1*.2);
       if(h1<.15&&nc<MAXC){const r=rand(9,13),hh=r*rand(4,5.5);dummy.position.set(px,y+hh*.5,pz);dummy.rotation.set(0,0,0);dummy.scale.set(r,hh,r);dummy.updateMatrix();cypT.setMatrixAt(nc,dummy.matrix);cypT.setColorAt(nc,col);nc++;}
-      else if(nr<MAXR){const r=rand(16,26);dummy.position.set(px,y+r*.75,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.85,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
+      else if(nr<MAXR){const r=rand(11,17);dummy.position.set(px,y+r*.6,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.8,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
       continue;}
     if(rv<.024||t>.6)continue;
     const village=vnoise(px*.0011+7,pz*.0011+3);
@@ -590,14 +590,14 @@ function makeDemon(){
     dmat=toonMat(demonModel.tex,.45);const rg=makeRigged(demonModel.geo,demonModel.bones,dmat);dB=rg.B;const m=rg.mesh;m.scale.setScalar(8.6);m.position.y=1.2;g.add(m);
     wl.position.set(-.7,3.6,-.9);wr.position.set(.7,3.6,-.9);wl.scale.setScalar(1.25);wr.scale.setScalar(1.25);}
   g.add(glow(0xff2a10,30,.5)); g.scale.setScalar(2.3); scene.add(g);
-  return {g,wl,wr,mat:dmat,u:du,B:dB,throwT:0,flash:0,wordT:-9,v:new V(),hp:diffI===2?4:3,orbit:rand(0,6.28),orbS:rand(.25,.6)*(Math.random()<.5?-1:1),rad:rand(150,300),h:rand(-50,90),cool:rand(1.5,3.5),ph:rand(0,6)};
+  return {g,wl,wr,mat:dmat,u:du,B:dB,throwT:0,flash:0,wordT:-9,v:new V(),hp:diffI===2?10:7,orbit:rand(0,6.28),orbS:rand(.25,.6)*(Math.random()<.5?-1:1),rad:rand(150,300),h:rand(-50,90),cool:rand(1.5,3.5),ph:rand(0,6)};
 }
 
 /* ---------- le Dragon ---------- */
 const NSEG=46, SPACING=17;
 const scaleMat=new THREE.MeshToonMaterial({color:'#c4161c',gradientMap:grad,emissive:'#4a0606',emissiveIntensity:.8});
 const spikeMat=new THREE.MeshToonMaterial({color:'#3a2030',gradientMap:grad,emissive:'#1a0a14'});
-const NHEAD=7,HEAD_HP=20,NECK=9;
+const NHEAD=7,HEAD_HP=120,NECK=9;
 const dragon={root:new THREE.Group(),head:new THREE.Group(),segs:[],heads:[],v:new V(0,60,0),hp:0,max:140,alive:false,cool:3,ang:0,wings:[],dying:-1,dieT:0};
 (function(){
   const H=dragon.head;
@@ -795,7 +795,7 @@ const dz=v=>{const a=Math.abs(v);return a<.07?0:Math.sign(v)*Math.min(1,(a-.07)*
 const P={pos:new V(0,320,0),yaw:0,pitch:0,speed:110,hp:100,sinceHit:9,fireT:0,roll:0,vel:new V(),jCool:0,dodgeT:0,dodgeCool:0,dodgeDir:1};
 const fwd=new V(0,0,-1),tmp=new V(),tmp2=new V(),tmp3=new V();
 let state='menu',score=0,wave=0,pending=null,phase='idle',time=0,shake=0,hurt=0,bannerT=0;
-const ROMAN=['I','II','III'];let stopT=0,combo=0,comboT=0,lockT=null;
+const ROMAN=['I','II','III'];let stopT=0,combo=0,comboT=0,lockT=null,reinf=0;
 const J_COOL=6,DODGE_T=.45,DODGE_COOL=1.6;
 /* ---------- mots d'impact ---------- */
 const words=[];for(let i=0;i<14;i++){const el=document.createElement('div');el.className='hitword';el.hidden=true;$('words').appendChild(el);words.push({el,pos:new V(),t0:-9,on:false});}
@@ -826,7 +826,7 @@ function explodeJ(){const p=J.g.position;J.on=false;J.g.visible=false;
   burst(p,9,7,3,150,260,1.4);burst(p,8,5,1.5,80,120,2);ring.visible=true;ring.position.copy(p);ringT=0;shake=reduced?0:.45;stopT=.09;sfx.judgeBoom();
   for(let i=demons.length-1;i>=0;i--)if(demons[i].g.position.distanceTo(p)<120){registerHit();killDemon(i);}
   for(const f of fires)if(f.life>0&&f.m.position.distanceTo(p)<170){f.life=0;f.m.visible=false;}
-  if(dragon.alive&&dragon.dying<0){let any=false;for(const h of dragon.heads)if(h.alive&&h.g.position.distanceTo(p)<150){any=true;hitHead(h,12,h.g.position,true);}
+  if(dragon.alive&&dragon.dying<0){let any=false;for(const h of dragon.heads)if(h.alive&&h.g.position.distanceTo(p)<150){any=true;hitHead(h,16,h.g.position,true);}
     if(any)word('JUGEMENT !',p,'crit');}}
 function updateJudgement(dt){
   if(ringT<1&&ring.visible){ringT+=dt*1.8;ring.scale.setScalar(10+ringT*150);ring.material.opacity=1-ringT;ring.quaternion.copy(camera.quaternion);if(ringT>=1)ring.visible=false;}
@@ -850,7 +850,7 @@ const hF=new V(),hR=new V(),hU=new V(),hT=new V(),hP0=new V(),hP1=new V(),hW=new
 const headsLeft=()=>dragon.heads.filter(h=>h.alive).length;
 function bossLabel(){const n=headsLeft();$('bossLabel').textContent='Le Dragon, le serpent ancien · '+n+(n>1?' têtes':' tête');}
 function hitHead(h,dmg,p,crit){if(!h.alive)return;h.hp-=dmg;h.flash=1;registerHit();burst(p,9,6,2,crit?24:10,100,.6);sfx.hit();score+=Math.round(dmg*12*mult());
-  if(time-h.wordT>.6){word(crit?'À LA TÊTE !':'TOUCHÉ',p,crit?'crit':'');h.wordT=time;}if(h.hp<=0)killHead(h);}
+  if(time-h.wordT>.6){word(crit?'GUEULE OUVERTE !':'DIADÈME',p,crit?'crit':'');h.wordT=time;}if(h.hp<=0)killHead(h);}
 function killHead(h){h.alive=false;h.hp=0;h.g.visible=false;burst(h.g.position,9,3,.6,160,200,1.8);burst(h.g.position,8,6,2,60,90,1.2);
   for(const n of h.neck){burst(n.g.position,8,2,.4,14,80,1);n.g.visible=false;}
   sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;score+=Math.round(600*mult());const n=headsLeft();bossLabel();
@@ -879,9 +879,9 @@ function updateHeads(dt,rage){
      if(h.model)h.model.rotation.x=.6-bite*.28+Math.sin(time*2.1+h.phase)*.05;
      if(h.jaw)h.jaw.rotation.x=-.22+Math.sin(time*1.7+h.phase)*.05+charge*.3+bite*.45;} // gueule qui s'ouvre en chargeant puis claque
     h.cool-=dt;h.mouth.material.opacity=clamp(1-h.cool,0,1)*.32;
-    if(h.cool<=0&&state==='play'){h.cool=rand(3.8,5.6)*(rage?.7:1)*DF().rate;h.lunge=1;h.mouth.getWorldPosition(hW);
+    if(h.cool<=0&&state==='play'){h.cool=rand(4,5.6)*(rage?.75:1)*DF().rate;h.lunge=1;h.mouth.getWorldPosition(hW);
       const t=hW.distanceTo(P.pos)/270;for(let q=0;q<2;q++){tmp.copy(P.pos).addScaledVector(P.vel,t*rand(.6,1.05)).sub(hW).normalize();
-        tmp.x+=rand(-.08,.08);tmp.y+=rand(-.08,.08);tmp.z+=rand(-.08,.08);spawnFire(hW,tmp.normalize(),270,5,13);}sfx.fire(hW);}
+        tmp.x+=rand(-.08,.08);tmp.y+=rand(-.08,.08);tmp.z+=rand(-.08,.08);spawnFire(hW,tmp.normalize(),270,5,11);}sfx.fire(hW);}
     if(state==='play'&&P.sinceHit>.9&&h.g.position.distanceTo(P.pos)<28)damagePlayer(20);
   }
   dragon.hp=dragon.heads.reduce((s,h)=>s+(h.alive?h.hp:0),0);
@@ -897,7 +897,7 @@ function startGame(){RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
   setTimeout(()=>{$('hint').style.opacity=0;},7000);nextWave();
 }
 function nextWave(){wave++;
-  if(wave<=3){$('waveLabel').textContent='Vague '+ROMAN[wave-1];banner('Vague '+ROMAN[wave-1],['Les anges déchus approchent.','Ils reviennent plus nombreux.','La dernière légion.'][wave-1]);pending={t:2.6,n:[4,6,8][wave-1]};phase='fight';sfx.wave();}
+  if(wave<=3){$('waveLabel').textContent='Vague '+ROMAN[wave-1];banner('Vague '+ROMAN[wave-1],['Les anges déchus approchent.','Ils reviennent plus nombreux.','La dernière légion.'][wave-1]);pending={t:2.6,n:[5,7,9][wave-1]};reinf=[3,6,8][wave-1];phase='fight';sfx.wave();}
   else{phase='bossintro';pending={t:5.5,n:0};moodTarget=1;$('waveLabel').textContent='Le Dragon';sfx.roar();
     banner('Un grand dragon rouge','« …un grand dragon rouge, ayant sept têtes et dix cornes, et sur ses têtes sept diadèmes. » Apocalypse 12:3',5.5);}
 }
@@ -906,7 +906,8 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   dragon.head.visible=true;dragon.head.position.copy(P.pos).addScaledVector(fwd,650);dragon.head.position.y=heightAt(dragon.head.position.x,dragon.head.position.z)-120;dragon.v.set(0,150,0);
   dragon.segs.forEach((s,i)=>{s.g.visible=true;s.g.position.copy(dragon.head.position);s.g.position.y-=(i+1)*SPACING;});
   for(const h of dragon.heads){h.alive=true;h.hp=headHp();h.g.visible=true;h.snap=true;h.cool=rand(3,6);h.flash=0;for(const n of h.neck){n.g.visible=true;n.g.position.copy(dragon.head.position);}}
-  dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();phase='boss';sfx.roar();}
+  dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();
+  $('hint').textContent='Le diadème protège chaque tête : frappez quand sa gueule s’embrase.';$('hint').style.opacity=1;setTimeout(()=>{$('hint').style.opacity=0;},9000);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
   if(P.hp<=0){P.hp=0;state='dead';burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('dead').hidden=false;$('cross').hidden=true;}}
 function win(){state='won';moodTarget=0;sfx.win();$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
@@ -944,7 +945,7 @@ function updatePlayer(dt){
   const flap=Math.sin(time*(boost?11:6.5))*.42+.12;wingR.rotation.y=-flap;wingL.rotation.y=flap;
   angel.visible=!(state==='dead'&&grounded);
   // tir
-  P.fireT-=dt;P.sinceHit+=dt;if(P.sinceHit>4&&state==='play')P.hp=Math.min(100,P.hp+3*dt);
+  P.fireT-=dt;P.sinceHit+=dt;if(P.sinceHit>5&&state==='play')P.hp=Math.min(100,P.hp+2*dt);
   if(state==='play'&&(firing||keys.Space)&&P.fireT<=0){P.fireT=.13;
     const dir=tmp2.copy(fwd);if(lockT){const t=lockT.pos.distanceTo(P.pos)/760;dir.copy(lockT.pos).addScaledVector(lockT.vel,t).sub(P.pos).normalize();}
     const b=bolts.find(b=>b.life<=0);if(b){b.m.position.copy(P.pos).addScaledVector(fwd,8);b.v.copy(dir).multiplyScalar(760);b.m.quaternion.setFromUnitVectors(UP,dir);b.m.visible=true;b.life=1.5;b.ref=lockT?lockT.ref:null;b.tgt=lockT?lockT.pos:null;sfx.shoot();P.castT=1;}
@@ -958,10 +959,10 @@ function updateBolts(dt){
     for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
       if(d.hp<=0)killDemon(i);else if(time-d.wordT>.5){word('TOUCHÉ',p);d.wordT=time;}}}
     if(!hit&&dragon.alive&&dragon.dying<0){
-      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;hitHead(h,3,p,true);break;}
-        for(const n of h.neck){const rr=n.r+6;if(p.distanceToSquared(n.g.position)<rr*rr){hit=true;hitHead(h,1,p,false);break;}}if(hit)break;}
+      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=h.cool<1.1||h.lunge>.05;hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
+        for(const n of h.neck){const rr=n.r+6;if(p.distanceToSquared(n.g.position)<rr*rr){hit=true;hitHead(h,.4,p,false);break;}}if(hit)break;}
       if(!hit)for(const sg2 of dragon.segs){const rr=sg2.r+7;if(p.distanceToSquared(sg2.g.position)<rr*rr){hit=true;burst(p,4,3,3,6,50,.3);dragon.flash=.3;
-        {let nh=null,nd=1e9;for(const h of dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(p);if(dd<nd){nd=dd;nh=h;}}if(nh){nh.hp-=.35;nh.flash=Math.max(nh.flash,.3);if(nh.hp<=0)killHead(nh);}} // le corps transmet un peu de dégâts : jamais de blocage
+        {let nh=null,nd=1e9;for(const h of dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(p);if(dd<nd){nd=dd;nh=h;}}if(nh){nh.hp-=.15;nh.flash=Math.max(nh.flash,.3);if(nh.hp<=0)killHead(nh);}} // le corps transmet un peu de dégâts : jamais de blocage
 
         if(time-(dragon.wordT||-9)>1.2){word('ÉCAILLES : VISEZ LES TÊTES',p);dragon.wordT=time;}break;}}
     }
@@ -983,7 +984,7 @@ function updateDemons(dt){
     if(d.u){const th=Math.sin(Math.min(1,d.throwT)*Math.PI);d.u.uT.value=time+d.ph;
       d.u.uAnim.value.set(.55+Math.sin(time*2.4+d.ph)*.25-th*.3,.35+Math.sin(time*1.7+d.ph)*.2+th*1.5,.22,2.2);d.u.uAnim2.value.x=.012;}
     d.cool-=dt;const dp=d.g.position.distanceTo(P.pos);
-    if(d.cool<=0&&dp<650&&state==='play'){d.cool=rand(2.2,3.8)*DF().rate;const t=dp/215;tmp.copy(P.pos).addScaledVector(P.vel,t*.85).sub(d.g.position).normalize();spawnFire(d.g.position,tmp,215,3.2,11);d.throwT=1;sfx.fire(d.g.position);}}
+    if(d.cool<=0&&dp<650&&state==='play'){d.cool=rand(1.5,2.7)*DF().rate;const t=dp/250;tmp.copy(P.pos).addScaledVector(P.vel,t*rand(.8,1.05)).sub(d.g.position).normalize();spawnFire(d.g.position,tmp,250,3.2,9);d.throwT=1;sfx.fire(d.g.position);}}
 }
 function updateDragon(dt){
   if(!dragon.alive)return;const H=dragon.head;
@@ -1039,6 +1040,7 @@ function frame(now){
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
   updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
+  else if(state==='play'&&phase==='fight'&&!pending&&reinf>0&&demons.length<=2){spawnDemons(reinf);reinf=0;banner('Renforts !','Une seconde escouade surgit des nuages.',2.2);sfx.roar();} // renforts quand la première escouade faiblit
   else if(state==='play'&&phase==='fight'&&!pending&&demons.length===0)nextWave();
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)$('banner').classList.remove('on');}
   hurt=Math.max(0,hurt-dt*1.6);shake=Math.max(0,shake-dt*1.5);
@@ -1055,6 +1057,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

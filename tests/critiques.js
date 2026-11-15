@@ -45,9 +45,9 @@ const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.t
     if(o.dodge)for(const f of D.fires)if(f.life>0&&f.m.position.distanceTo(pos)<90){D.dodge();break;}
     D.input(sx*.85,sy*.85,fire);},60);};`;
 
-async function runPilot(browser,name,opts,{diff=1,maxMin=14}={}){
+async function runPilot(browser,name,opts,{diff=1,maxMin=25}={}){
   const {p,errs}=await open(browser,{diff});
-  await p.evaluate(PILOT);await p.evaluate(o=>{const cp=__dbg.cloudPass;cp.scale=.15;cp.setSize(cp.w,cp.h);__pilot(o);},opts);
+  await p.evaluate(PILOT);await p.evaluate(o=>{__dbg.fast();__pilot(o);},opts);
   const t0=Date.now();let st;
   while(Date.now()-t0<maxMin*60000){await p.waitForTimeout(10000);
     st=await p.evaluate(()=>({state:__dbg.state,score:__dbg.score,heads:__dbg.dragon.heads.filter(h=>h.alive).length,log:__plog,simTime:__dbg.time}));
