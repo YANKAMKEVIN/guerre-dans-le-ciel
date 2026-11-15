@@ -1,0 +1,7 @@
+{
+  "name": "guerre-dans-le-ciel-critiques",
+  "private": true,
+  "description": "Critiques automatiques : pilotes qui jouent le jeu et mesurent visée, durée des combats, difficulté, performances, lisibilité et son.",
+  "scripts": { "critiques": "node critiques.js" },
+  "devDependencies": { "three": "0.160.0" }
+}

@@ -497,7 +497,7 @@ function applyMood(){
   L('top',skyU.uTop.value);L('hor',skyU.uHor.value);L('bot',skyU.uBot.value);L('sun',skyU.uSun.value);
   L('fog',scene.fog.color);L('light',sun.color);L('cLit',cloudU.uLit.value);L('cMid',cloudU.uMid.value);L('cSh',cloudU.uSh.value);L('cDeep',cloudU.uDeep.value);cloudU.uSunCol.value.copy(skyU.uSun.value);cloudU.uFog.value.copy(scene.fog.color);
   L('hemiS',hemi.color);L('hemiG',hemi.groundColor);L('land',terrainMat.color);crownMat.color.copy(terrainMat.color);roofMat.color.copy(terrainMat.color); floor.material.color.copy(scene.fog.color).multiplyScalar(.92);
-  sun.intensity=lerp(2.7,1.6,m); hemi.intensity=lerp(1.5,1.6,m); bloom.strength=lerp(.45,.7,m);
+  sun.intensity=lerp(2.7,1.6,m); hemi.intensity=lerp(1.5,1.6,m); bloom.strength=lerp(.45,.55,m);
 }
 
 /* ---------- textures et particules ---------- */
@@ -564,7 +564,7 @@ angel.add(glow(0xffd98a,30,.18));
 const UP=new V(0,1,0);
 const boltGeo=new THREE.CylinderGeometry(.42,.42,11,6), boltMat=new THREE.MeshBasicMaterial({color:new THREE.Color(6,4.2,1.4),fog:false});
 const bolts=[];for(let i=0;i<70;i++){const m=new THREE.Mesh(boltGeo,boltMat);m.visible=false;scene.add(m);bolts.push({m,v:new V(),life:0});}
-const fireGeo=new THREE.SphereGeometry(1,10,8), fireMat=new THREE.MeshBasicMaterial({color:new THREE.Color(7,1.5,.25),fog:false});
+const fireGeo=new THREE.SphereGeometry(1,10,8), fireMat=new THREE.MeshBasicMaterial({color:new THREE.Color(2.6,.75,.16),fog:false}); // assez chaud pour briller, sans brûler l'écran
 const fires=[];for(let i=0;i<130;i++){const m=new THREE.Mesh(fireGeo,fireMat);m.visible=false;scene.add(m);fires.push({m,v:new V(),life:0,r:3,dmg:10});}
 function spawnFire(from,dir,speed,r,dmg){const f=fires.find(f=>f.life<=0);if(!f)return;f.m.position.copy(from);f.m.scale.setScalar(r);f.m.visible=true;f.v.copy(dir).multiplyScalar(speed);f.life=6;f.r=r;f.dmg=dmg;}
 
@@ -644,7 +644,7 @@ const dragon={root:new THREE.Group(),head:new THREE.Group(),segs:[],heads:[],v:n
     for(const h of dragon.heads){const hm=toonMat(t,.4);h.mat=hm;
       const skull=new THREE.Bone(),jaw=new THREE.Bone();jaw.position.set(...JAW_PIV);skull.add(jaw);
       const m=new THREE.SkinnedMesh(geo,hm);m.add(skull);const sk=new THREE.Skeleton([skull,jaw]);m.bind(sk);
-      const ol=new THREE.SkinnedMesh(geo,skinOutlineMat);m.add(ol);ol.bind(sk,m.bindMatrix.clone());m.frustumCulled=ol.frustumCulled=false;h.jaw=jaw;
+      const ol=new THREE.SkinnedMesh(geo,skinOutlineMat);m.add(ol);ol.bind(sk,m.bindMatrix.clone());m.frustumCulled=ol.frustumCulled=false;h.jaw=jaw;h.outline=ol;
       m.scale.setScalar(40);m.rotation.x=.6;m.position.set(0,8.5,-3.6);h.model=m;h.g.remove(h.fb);h.g.add(m);h.mouth.position.set(0,-1,18);h.crown.position.set(0,25,-9);h.crown.scale.setScalar(1.5);}
   }catch(e){console.warn('modèle dragon indisponible',e);}finally{assetDone();}})();
 })();
@@ -653,6 +653,15 @@ const dragon={root:new THREE.Group(),head:new THREE.Group(),segs:[],heads:[],v:n
 var loadedN=0;const LOAD_TOTAL=4;
 function assetDone(){loadedN++;const b=$('play');if(loadedN>=LOAD_TOTAL){b.disabled=false;b.textContent='Prendre son envol';}else b.textContent='Préparation du ciel… '+loadedN+'/'+LOAD_TOTAL;}
 setTimeout(()=>{const b=$('play');if(b.disabled){b.disabled=false;b.textContent='Prendre son envol';}},15000);
+/* ---------- Dragon : segments du corps et des cous dessinés en instances (critique performances) ---------- */
+let DI=null;const ZM=new THREE.Matrix4().makeScale(0,0,0);
+function initDragonInstances(){const groups=[...dragon.segs.map(s=>s.g),...dragon.heads.flatMap(h=>h.neck.map(n=>n.g))];
+  const sphs=[],spks=[];for(const g of groups){const [a,b]=g.children.filter(c=>c.isMesh);if(a){a.visible=false;sphs.push([g,a]);}if(b){b.visible=false;spks.push([g,b]);}}
+  const mk=(list,mat)=>{const im=new THREE.InstancedMesh(list[0][1].geometry,mat,list.length);im.frustumCulled=false;scene.add(im);return {im,list};};
+  DI=[mk(sphs,scaleMat),mk(spks,spikeMat)];}
+function updateDragonInstances(){if(!DI)initDragonInstances();const on=dragon.root.visible;
+  if(on)dragon.root.updateMatrixWorld(true);
+  for(const {im,list} of DI){im.visible=on;if(!on)continue;list.forEach(([g,m],i)=>im.setMatrixAt(i,g.visible?m.matrixWorld:ZM));im.instanceMatrix.needsUpdate=true;}}
 /* ---------- son et musique procéduraux (Web Audio) ---------- */
 let ac=null,muted=false,musicOn=true,AU=null,AU_MG=2.2;
 const VOL={music:.6,sfx:.85};try{const v=JSON.parse(localStorage.getItem('gdc-vol')||'null');if(v){VOL.music=v.music??VOL.music;VOL.sfx=v.sfx??VOL.sfx;}}catch(e){}
@@ -864,11 +873,12 @@ function updateHeads(dt,rage){
       n.position.set(u*u*hP0.x+2*u*t*hP1.x+t*t*tail.x,u*u*hP0.y+2*u*t*hP1.y+t*t*tail.y,u*u*hP0.z+2*u*t*hP1.z+t*t*tail.z);
       {const wv=Math.sin(time*2.3-i*.7+h.phase)*5.5*Math.sin(t*Math.PI);n.position.addScaledVector(hR,wv);n.position.addScaledVector(hU,Math.cos(time*1.9-i*.6+h.phase)*3*Math.sin(t*Math.PI));} // ondulation du cou
       if(i>0)n.lookAt(h.neck[i-1].g.position);else n.lookAt(hP0);}
+    if(h.outline)h.outline.visible=h.g.position.distanceTo(camera.position)<520; // contour seulement de près (critique performances)
     if(h.flash>0){h.flash=Math.max(0,h.flash-dt*5);if(h.mat)h.mat.emissiveIntensity=.4+h.flash*2.4;}
     {const charge=clamp(1-h.cool,0,1),bite=Math.sin(Math.min(1,h.lunge)*Math.PI);
      if(h.model)h.model.rotation.x=.6-bite*.28+Math.sin(time*2.1+h.phase)*.05;
      if(h.jaw)h.jaw.rotation.x=-.22+Math.sin(time*1.7+h.phase)*.05+charge*.3+bite*.45;} // gueule qui s'ouvre en chargeant puis claque
-    h.cool-=dt;h.mouth.material.opacity=clamp(1-h.cool,0,1)*.6;
+    h.cool-=dt;h.mouth.material.opacity=clamp(1-h.cool,0,1)*.32;
     if(h.cool<=0&&state==='play'){h.cool=rand(3.8,5.6)*(rage?.7:1)*DF().rate;h.lunge=1;h.mouth.getWorldPosition(hW);
       const t=hW.distanceTo(P.pos)/270;for(let q=0;q<2;q++){tmp.copy(P.pos).addScaledVector(P.vel,t*rand(.6,1.05)).sub(hW).normalize();
         tmp.x+=rand(-.08,.08);tmp.y+=rand(-.08,.08);tmp.z+=rand(-.08,.08);spawnFire(hW,tmp.normalize(),270,5,13);}sfx.fire(hW);}
@@ -916,7 +926,7 @@ function updatePlayer(dt){
     sx=clamp(dz(mx)+kx,-1,1);sy=clamp(dz(my)+ky,-1,1);boost=keys.ShiftLeft||keys.ShiftRight;
   }else if(state==='dead'){sx=.3;sy=.9;}
   else{sx=Math.sin(time*.3)*.22;sy=clamp((P.pos.y-320)*.004+P.pitch*1.2,-.4,.4);}
-  P.yaw-=sx*1.55*dt;P.pitch=clamp(P.pitch-sy*1.25*dt,-1.15,1.15);
+  P.yaw-=sx*(1.85+(P.speed>150?.25:0))*dt;P.pitch=clamp(P.pitch-sy*1.4*dt,-1.15,1.15); // virage plus vif (critique visée)
   const gy=heightAt(P.pos.x,P.pos.z);
   if(state!=='dead'){if(P.pos.y<gy+110&&P.pitch<.3)P.pitch+=2.4*dt;if(P.pos.y>1500&&P.pitch>-.2)P.pitch-=1.8*dt;}
   P.speed=lerp(P.speed,boost?195:112,1-Math.exp(-dt*3));
@@ -960,7 +970,7 @@ function updateBolts(dt){
 function updateFires(dt){
   for(const f of fires){if(f.life<=0)continue;f.life-=dt;f.m.position.addScaledVector(f.v,dt);
     if(Math.random()<.5){const i=pNext;pNext=(pNext+1)%PN;pPos[i*3]=f.m.position.x;pPos[i*3+1]=f.m.position.y;pPos[i*3+2]=f.m.position.z;pVel[i*3]=pVel[i*3+1]=pVel[i*3+2]=0;pBase[i*3]=3;pBase[i*3+1]=.6;pBase[i*3+2]=.1;pLife[i]=pMax[i]=.45;}
-    const rr=f.r+4.5;if(state==='play'&&P.dodgeT<=0&&f.m.position.distanceToSquared(P.pos)<rr*rr){damagePlayer(f.dmg);burst(P.pos,7,2,.4,24,70,.7);f.life=0;}
+    const rr=f.r+4.5;if(state==='play'&&P.dodgeT<=0&&f.m.position.distanceToSquared(P.pos)<rr*rr){damagePlayer(f.dmg);burst(P.pos,1.6,.55,.15,10,60,.45);f.life=0;}
     if(f.life<=0)f.m.visible=false;}
 }
 function updateDemons(dt){
@@ -1027,7 +1037,7 @@ const camPos=new V(0,270,30);let frameMs=16;let last=performance.now();
 function frame(now){
   let dt=Math.min(.05,(now-last)/1000);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}time+=dt;
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
-  updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateParticles(dt);
+  updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
   else if(state==='play'&&phase==='fight'&&!pending&&demons.length===0)nextWave();
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)$('banner').classList.remove('on');}
@@ -1045,6 +1055,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
