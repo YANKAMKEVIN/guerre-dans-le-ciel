@@ -529,6 +529,8 @@ function featherWing(){const s=new THREE.Shape();s.moveTo(0,.6);s.bezierCurveTo(
 function batWing(){const s=new THREE.Shape();s.moveTo(0,.4);s.quadraticCurveTo(3,3.6,5,3.2);s.lineTo(10,2);
   s.quadraticCurveTo(8,1,7.6,-2.6);s.quadraticCurveTo(6.2,-.6,5,-3.6);s.quadraticCurveTo(3.8,-1,2.4,-3.2);s.quadraticCurveTo(1.6,-1,0,-1.4);s.closePath();return new THREE.ShapeGeometry(s,6);}
 const featherGeo=featherWing(), batGeo=batWing();
+const batInnerGeo=(()=>{const s=new THREE.Shape();s.moveTo(0,.4);s.quadraticCurveTo(3,3.6,5,3.2);s.lineTo(5.1,-3.6);s.quadraticCurveTo(3.8,-1,2.4,-3.2);s.quadraticCurveTo(1.6,-1,0,-1.4);s.closePath();return new THREE.ShapeGeometry(s,6);})();
+const batOuterGeo=(()=>{const s=new THREE.Shape();s.moveTo(-.1,3.2);s.lineTo(5,2);s.quadraticCurveTo(3,1,2.6,-2.6);s.quadraticCurveTo(1.2,-.6,-.1,-3.6);s.closePath();return new THREE.ShapeGeometry(s,6);})();
 
 /* ---------- l'ange ---------- */
 const angel=new THREE.Group(), bank=new THREE.Group(), pose=new THREE.Group();
@@ -607,7 +609,8 @@ const dragon={root:new THREE.Group(),head:new THREE.Group(),segs:[],heads:[],v:n
     const m=new THREE.Mesh(sg,scaleMat);m.scale.set(r,r,r*1.35);g.add(m);
     const sp=new THREE.Mesh(cg,spikeMat);sp.scale.setScalar(r);sp.position.y=r*1.1;g.add(sp);
     dragon.root.add(g);dragon.segs.push({g,r});}
-  for(const s of [-1,1]){const piv=new THREE.Group();const m=new THREE.Mesh(batGeo,demonWingMat);m.rotation.x=Math.PI/2;m.scale.set(s*10,10,1);piv.add(m);piv.position.set(s*10,6,0);dragon.segs[3].g.add(piv);dragon.wings.push([piv,s]);}
+  for(const s of [-1,1]){const piv=new THREE.Group();const m=new THREE.Mesh(batInnerGeo,demonWingMat);m.rotation.x=Math.PI/2;m.scale.set(s*13,13,1);piv.add(m);
+    const op=new THREE.Group();op.position.set(s*65,0,0);const mo=new THREE.Mesh(batOuterGeo,demonWingMat);mo.rotation.x=Math.PI/2;mo.scale.set(s*13,13,1);op.add(mo);piv.add(op);piv.userData.outer=op;piv.position.set(s*10,6,0);dragon.segs[3].g.add(piv);dragon.wings.push([piv,s]);}
   // sept têtes, chacune sur son cou, avec son diadème (Apocalypse 12:3)
   const crownMat=new THREE.MeshToonMaterial({color:'#f2c443',gradientMap:grad,emissive:'#a86a00',emissiveIntensity:.7});
   const crownRing=new THREE.TorusGeometry(6,1.2,6,24),crownSpike=new THREE.ConeGeometry(1.1,4.5,5);
@@ -633,7 +636,15 @@ const dragon={root:new THREE.Group(),head:new THREE.Group(),segs:[],heads:[],v:n
     geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(buf('uv')),2));
     geo.setIndex(new THREE.BufferAttribute(new Uint32Array(buf('idx')),1));geo.computeVertexNormals();
     const t=await new THREE.TextureLoader().loadAsync(d.tex);t.flipY=false;t.colorSpace=THREE.SRGBColorSpace;
-    for(const h of dragon.heads){const hm=toonMat(t,.4);h.mat=hm;const m=new THREE.Mesh(geo,hm);m.add(new THREE.Mesh(geo,outlineMat));
+    // mâchoire : deux os (crâne, mâchoire) ; poids selon la position sous la ligne de la bouche
+    {const pa=geo.attributes.position.array,nv=pa.length/3,si=new Uint8Array(nv*4),sw=new Uint8Array(nv*4);const sm=(a,b,v)=>{const q=Math.min(1,Math.max(0,(v-a)/(b-a)));return q*q*(3-2*q);};
+     for(let i=0;i<nv;i++){const y=pa[i*3+1],z=pa[i*3+2];const w=sm(.05,.11,z)*sm(-.055,-.09,y);si[i*4+1]=1;const wb=Math.round(w*255);sw[i*4]=255-wb;sw[i*4+1]=wb;}
+     geo.setAttribute('skinIndex',new THREE.Uint8BufferAttribute(si,4));geo.setAttribute('skinWeight',new THREE.Uint8BufferAttribute(sw,4,true));}
+    const JAW_PIV=[0,-.09,.07];
+    for(const h of dragon.heads){const hm=toonMat(t,.4);h.mat=hm;
+      const skull=new THREE.Bone(),jaw=new THREE.Bone();jaw.position.set(...JAW_PIV);skull.add(jaw);
+      const m=new THREE.SkinnedMesh(geo,hm);m.add(skull);const sk=new THREE.Skeleton([skull,jaw]);m.bind(sk);
+      const ol=new THREE.SkinnedMesh(geo,skinOutlineMat);m.add(ol);ol.bind(sk,m.bindMatrix.clone());m.frustumCulled=ol.frustumCulled=false;h.jaw=jaw;
       m.scale.setScalar(40);m.rotation.x=.6;m.position.set(0,8.5,-3.6);h.model=m;h.g.remove(h.fb);h.g.add(m);h.mouth.position.set(0,-1,18);h.crown.position.set(0,25,-9);h.crown.scale.setScalar(1.5);}
   }catch(e){console.warn('modèle dragon indisponible',e);}finally{assetDone();}})();
 })();
@@ -851,9 +862,12 @@ function updateHeads(dt,rage){
     hP1.copy(hP0).lerp(tail,.5).addScaledVector(hU,38);
     for(let i=0;i<NECK;i++){const t=(i+1)/(NECK+1),u=1-t,n=h.neck[i].g;
       n.position.set(u*u*hP0.x+2*u*t*hP1.x+t*t*tail.x,u*u*hP0.y+2*u*t*hP1.y+t*t*tail.y,u*u*hP0.z+2*u*t*hP1.z+t*t*tail.z);
+      {const wv=Math.sin(time*2.3-i*.7+h.phase)*5.5*Math.sin(t*Math.PI);n.position.addScaledVector(hR,wv);n.position.addScaledVector(hU,Math.cos(time*1.9-i*.6+h.phase)*3*Math.sin(t*Math.PI));} // ondulation du cou
       if(i>0)n.lookAt(h.neck[i-1].g.position);else n.lookAt(hP0);}
     if(h.flash>0){h.flash=Math.max(0,h.flash-dt*5);if(h.mat)h.mat.emissiveIntensity=.4+h.flash*2.4;}
-    if(h.model)h.model.rotation.x=.6-Math.sin(Math.min(1,h.lunge)*Math.PI)*.5+Math.sin(time*2.1+h.phase)*.06;
+    {const charge=clamp(1-h.cool,0,1),bite=Math.sin(Math.min(1,h.lunge)*Math.PI);
+     if(h.model)h.model.rotation.x=.6-bite*.28+Math.sin(time*2.1+h.phase)*.05;
+     if(h.jaw)h.jaw.rotation.x=-.22+Math.sin(time*1.7+h.phase)*.05+charge*.3+bite*.45;} // gueule qui s'ouvre en chargeant puis claque
     h.cool-=dt;h.mouth.material.opacity=clamp(1-h.cool,0,1)*.6;
     if(h.cool<=0&&state==='play'){h.cool=rand(3.8,5.6)*(rage?.7:1)*DF().rate;h.lunge=1;h.mouth.getWorldPosition(hW);
       const t=hW.distanceTo(P.pos)/270;for(let q=0;q<2;q++){tmp.copy(P.pos).addScaledVector(P.vel,t*rand(.6,1.05)).sub(hW).normalize();
@@ -981,7 +995,7 @@ function updateDragon(dt){
   H.position.addScaledVector(dragon.v,dt);tmp.copy(H.position).add(dragon.v);if(dragon.v.lengthSq()>1)H.lookAt(tmp);
   let prev=H.position;
   for(const s of dragon.segs){tmp.copy(s.g.position).sub(prev);const l=tmp.length()||1;s.g.position.copy(prev).addScaledVector(tmp,SPACING/l);s.g.lookAt(prev);prev=s.g.position;}
-  const fl=Math.sin(time*2.6)*.55;for(const [piv,s] of dragon.wings)piv.rotation.z=s*fl;
+  {const ph=time*2.4;for(const [piv,s] of dragon.wings){piv.rotation.z=s*Math.sin(ph)*.6;piv.rotation.y=s*Math.cos(ph)*.12;if(piv.userData.outer)piv.userData.outer.rotation.z=s*Math.sin(ph-1.2)*.7;}} // battement en deux temps : la pointe suit avec retard
   $('bossHp').style.width=(dragon.hp/dragon.max*100)+'%';
 }
 
@@ -1024,12 +1038,13 @@ function frame(now){
   tmp.copy(P.pos).addScaledVector(fwd,40);camera.lookAt(tmp);camera.rotateZ(P.roll*.5);
   const fov=lerp(62,76,clamp((P.speed-112)/83,0,1));if(Math.abs(fov-camera.fov)>.05){camera.fov=fov;camera.updateProjectionMatrix();}
   if(window.__camView){camera.position.copy(P.pos).add(window.__camView);camera.lookAt(P.pos);} // vue de contrôle (tests)
+  if(window.__camAt){camera.position.copy(window.__camAt);camera.lookAt(window.__camTarget);}
   volU.uTime.value=time;sky.position.copy(camera.position);updateTerrain(P.pos);updateVeg(P.pos);updateHud();audioUpdate();
   composer.render();
   // qualité adaptative : si l'image ralentit, les nuages passent en résolution plus basse
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
