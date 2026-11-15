@@ -200,6 +200,35 @@ function makeAnim(t,glowAmt,cfg){
   return {mat,outline,u};
 }
 let angelU=null;
+/* ---------- personnages riggés : squelette ajusté au modèle, poids calculés selon la distance aux os ---------- */
+const skinOutlineMat=new THREE.ShaderMaterial({side:THREE.BackSide,uniforms:{uW:{value:.0042}},
+  vertexShader:'#include <common>\n#include <skinning_pars_vertex>\nuniform float uW;void main(){\n#include <skinbase_vertex>\n#include <beginnormal_vertex>\n#include <skinnormal_vertex>\n#include <begin_vertex>\n#include <skinning_vertex>\ntransformed+=normalize(objectNormal)*uW;gl_Position=projectionMatrix*modelViewMatrix*vec4(transformed,1.);}',
+  fragmentShader:'void main(){gl_FragColor=vec4(.10,.04,.11,1.);}'});
+function skinGeo(d){const b64=k=>{const s=atob(d[k]),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(b64('pos').buffer),3));
+  geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(b64('uv').buffer),2));geo.setIndex(new THREE.BufferAttribute(new Uint32Array(b64('idx').buffer),1));geo.computeVertexNormals();
+  geo.setAttribute('skinIndex',new THREE.Uint8BufferAttribute(b64('skinIdx'),4));geo.setAttribute('skinWeight',new THREE.Uint8BufferAttribute(b64('skinW'),4,true));return geo;}
+function makeRigged(geo,boneDefs,mat){const bones=boneDefs.map(b=>{const o=new THREE.Bone();o.name=b.name;return o;});
+  boneDefs.forEach((b,i)=>{const p=b.parent>=0?boneDefs[b.parent].pos:[0,0,0];bones[i].position.set(b.pos[0]-p[0],b.pos[1]-p[1],b.pos[2]-p[2]);if(b.parent>=0)bones[b.parent].add(bones[i]);});
+  const mesh=new THREE.SkinnedMesh(geo,mat);mesh.add(bones[0]);const sk=new THREE.Skeleton(bones);mesh.bind(sk);
+  const ol=new THREE.SkinnedMesh(geo,skinOutlineMat);ol.frustumCulled=mesh.frustumCulled=false;mesh.add(ol);ol.bind(sk,mesh.bindMatrix.clone());
+  const B={};bones.forEach(b=>B[b.name]=b);return {mesh,B};}
+const R_=(b,x,y,z)=>b&&b.rotation.set(x,y,z);
+let angelB=null;
+function poseAngel(c,bo,dodge){const B=angelB,t=time;if(!B)return; // c : bras tendus (tir), bo : élan, dodge : esquive
+  const fl=Math.sin(t*1.6),kick=Math.sin(t*(2.4+bo*2.6));
+  const ux=lerp(.35+fl*.08-bo*.0,-2.55,c)+(dodge?-.8:0),uz=lerp(.18+bo*.1,.08,c)+(dodge?.5:0);
+  R_(B['upperarm.l'],ux,0,uz);R_(B['upperarm.r'],ux+(c?0:Math.sin(t*1.6+1)*.06),0,-uz);
+  R_(B['forearm.l'],lerp(-.35,-.08,c),0,0);R_(B['forearm.r'],lerp(-.35,-.08,c),0,0);
+  const th=dodge?-.7:.12+bo*.08,sh=dodge?1.3:.35+bo*.1;
+  R_(B['thigh.l'],th+kick*.12,0,.02);R_(B['thigh.r'],th-kick*.12,0,-.02);R_(B['shin.l'],sh+Math.max(0,kick)*.35,0,0);R_(B['shin.r'],sh+Math.max(0,-kick)*.35,0,0);
+  R_(B['foot.l'],.5,0,0);R_(B['foot.r'],.5,0,0);R_(B['head'],-.45,0,0);R_(B['neck'],-.2,0,0);R_(B['spine'],-.05+Math.sin(t*1.6)*.03,0,0);}
+function poseDemon(d){const B=d.B,t=time+d.ph;if(!B)return;const th=Math.sin(Math.min(1,d.throwT)*Math.PI);
+  const ux=-.35+Math.sin(t*1.7)*.18-th*1.25,uz=.42+Math.sin(t*2.4)*.15;
+  R_(B['upperarm.l'],ux,0,uz);R_(B['upperarm.r'],-.35+Math.sin(t*1.7+1.3)*.18,0,-uz);
+  R_(B['forearm.l'],lerp(-1.0+Math.sin(t*2.2)*.2,-.15,th),0,0);R_(B['forearm.r'],-1.0+Math.sin(t*2.2+1)*.2,0,0);
+  R_(B['thigh.l'],.15+Math.sin(t*1.9)*.25,0,0);R_(B['thigh.r'],.1+Math.sin(t*1.9+2)*.25,0,0);R_(B['shin.l'],.6+Math.sin(t*1.9+.6)*.25,0,0);R_(B['shin.r'],.6+Math.sin(t*1.9+2.6)*.25,0,0);
+  R_(B['head'],Math.sin(t*1.1)*.1,Math.sin(t*.8)*.3,0);R_(B['spine'],.08+th*.15,0,0);}
 
 /* ---------- ambiance : ciel céleste (0) vers ciel d'apocalypse (1) ---------- */
 const C=h=>new THREE.Color(h);
@@ -523,13 +552,8 @@ const hair=new THREE.Mesh(new THREE.SphereGeometry(.84,12,8),new THREE.MeshStand
 // modèle 3D de l'ange ; les formes simples ci-dessus restent en secours si le fichier ne charge pas
 (async()=>{try{
   const d=await (await fetch('angel.json')).json();
-  const f32=k=>{const s=atob(d[k]),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;};
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(f32('pos')),3));
-  geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(f32('uv')),2));
-  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(f32('idx')),1));geo.computeVertexNormals();
   const t=await new THREE.TextureLoader().loadAsync(d.tex);t.flipY=false;t.colorSpace=THREE.SRGBColorSpace;
-  const am=makeAnim(t,.3,ANGEL_CFG);angelU=am.u;const m=new THREE.Mesh(geo,am.mat);m.add(new THREE.Mesh(geo,am.outline));
+  const rg=makeRigged(skinGeo(d),d.bones,toonMat(t,.3));angelB=rg.B;const m=rg.mesh;
   m.scale.setScalar(8.2);m.rotation.y=Math.PI;m.position.y=.2;pose.add(m);for(const p of [robe,chest,head,sash,hair])pose.remove(p);
   wingR.position.z=wingL.position.z=1.05;}catch(e){console.warn('modèle ange indisponible',e);}finally{assetDone();}})();
 angel.add(glow(0xffd98a,30,.18));
@@ -549,16 +573,11 @@ const eyeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(8,1,.2)});
 const demons=[];let demonModel=null;
 (async()=>{try{
   const d=await (await fetch('demon.json')).json();
-  const buf=k=>{const s=atob(d[k]),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;};
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(buf('pos')),3));
-  geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(buf('uv')),2));
-  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(buf('idx')),1));geo.computeVertexNormals();
   const t=await new THREE.TextureLoader().loadAsync(d.tex);t.flipY=false;t.colorSpace=THREE.SRGBColorSpace;
-  demonModel={geo,tex:t};
+  demonModel={geo:skinGeo(d),tex:t,bones:d.bones};
 }catch(e){console.warn('modèle démon indisponible',e);}finally{assetDone();}})();
 function makeDemon(){
-  const g=new THREE.Group();let dmat=null,du=null;
+  const g=new THREE.Group();let dmat=null,du=null,dB=null;
   const b=new THREE.Mesh(new THREE.ConeGeometry(1.7,6,8),demonMat);b.rotation.x=Math.PI;g.add(b);
   const h=new THREE.Mesh(new THREE.SphereGeometry(1.2,10,8),demonMat);h.position.y=3.7;g.add(h);
   for(const s of [-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(.35,2.2,6),demonMat);horn.position.set(s*.8,5,0);horn.rotation.z=-s*.5;g.add(horn);
@@ -566,10 +585,10 @@ function makeDemon(){
   const wl=new THREE.Group(),wr=new THREE.Group();
   for(const [w,s] of [[wr,1],[wl,-1]]){const m=new THREE.Mesh(batGeo,demonWingMat);m.scale.set(s,1,1);w.add(m);w.position.set(s*.8,2.2,-.5);g.add(w);}
   if(demonModel){for(const c of g.children.slice())if(c.isMesh)g.remove(c);
-    const am=makeAnim(demonModel.tex,.45,DEMON_CFG);dmat=am.mat;du=am.u;const m=new THREE.Mesh(demonModel.geo,dmat);m.scale.setScalar(8.6);m.position.y=1.2;g.add(m);m.add(new THREE.Mesh(demonModel.geo,am.outline));
+    dmat=toonMat(demonModel.tex,.45);const rg=makeRigged(demonModel.geo,demonModel.bones,dmat);dB=rg.B;const m=rg.mesh;m.scale.setScalar(8.6);m.position.y=1.2;g.add(m);
     wl.position.set(-.7,3.6,-.9);wr.position.set(.7,3.6,-.9);wl.scale.setScalar(1.25);wr.scale.setScalar(1.25);}
   g.add(glow(0xff2a10,30,.5)); g.scale.setScalar(2.3); scene.add(g);
-  return {g,wl,wr,mat:dmat,u:du,throwT:0,flash:0,wordT:-9,v:new V(),hp:diffI===2?4:3,orbit:rand(0,6.28),orbS:rand(.25,.6)*(Math.random()<.5?-1:1),rad:rand(150,300),h:rand(-50,90),cool:rand(1.5,3.5),ph:rand(0,6)};
+  return {g,wl,wr,mat:dmat,u:du,B:dB,throwT:0,flash:0,wordT:-9,v:new V(),hp:diffI===2?4:3,orbit:rand(0,6.28),orbS:rand(.25,.6)*(Math.random()<.5?-1:1),rad:rand(150,300),h:rand(-50,90),cool:rand(1.5,3.5),ph:rand(0,6)};
 }
 
 /* ---------- le Dragon ---------- */
@@ -894,7 +913,8 @@ function updatePlayer(dt){
   P.roll=lerp(P.roll,-sx*.75,1-Math.exp(-dt*5));
   P.jCool=Math.max(0,P.jCool-dt);P.dodgeCool=Math.max(0,P.dodgeCool-dt);
   if(P.dodgeT>0){P.dodgeT=Math.max(0,P.dodgeT-dt);tmp3.crossVectors(fwd,UP).normalize();P.pos.addScaledVector(tmp3,P.dodgeDir*330*(P.dodgeT/DODGE_T+.2)*dt);}
-  if(angelU){P.castT=Math.max(0,(P.castT||0)-dt*2.2);const c=Math.min(1,P.castT*1.6),bo=clamp((P.speed-112)/83,0,1);angelU.uT.value=time;
+  P.castT=Math.max(0,(P.castT||0)-dt*2.2);poseAngel(Math.min(1,P.castT*1.6),clamp((P.speed-112)/83,0,1),P.dodgeT>0);
+  if(angelU){const c=Math.min(1,P.castT*1.6),bo=clamp((P.speed-112)/83,0,1);angelU.uT.value=time;
     angelU.uAnim.value.set(.18+Math.sin(time*1.3)*.05+(P.dodgeT>0?.6:0),.25+Math.sin(time*1.6)*.1+c*2.05,.1+bo*.12,2.4+bo*2.6);angelU.uAnim2.value.x=.012+bo*.014;angelU.uAnim2.value.y=8+bo*6;}
   bank.rotation.z=P.roll-(P.dodgeT>0?P.dodgeDir*(1-P.dodgeT/DODGE_T)*Math.PI*2:0);
   const flap=Math.sin(time*(boost?11:6.5))*.42+.12;wingR.rotation.y=-flap;wingL.rotation.y=flap;
@@ -935,7 +955,8 @@ function updateDemons(dt){
     tmp.sub(d.g.position);const dist=tmp.length();tmp.normalize().multiplyScalar(Math.min(235,dist*1.6));
     d.v.lerp(tmp,1-Math.exp(-dt*2.2));d.g.position.addScaledVector(d.v,dt);d.g.lookAt(P.pos);
     const fl=Math.sin(time*8+d.ph)*.5;d.wr.rotation.y=-fl;d.wl.rotation.y=fl;
-    if(d.u){d.throwT=Math.max(0,d.throwT-dt*2.2);const th=Math.sin(Math.min(1,d.throwT)*Math.PI);d.u.uT.value=time+d.ph;
+    d.throwT=Math.max(0,d.throwT-dt*2.2);poseDemon(d);
+    if(d.u){const th=Math.sin(Math.min(1,d.throwT)*Math.PI);d.u.uT.value=time+d.ph;
       d.u.uAnim.value.set(.55+Math.sin(time*2.4+d.ph)*.25-th*.3,.35+Math.sin(time*1.7+d.ph)*.2+th*1.5,.22,2.2);d.u.uAnim2.value.x=.012;}
     d.cool-=dt;const dp=d.g.position.distanceTo(P.pos);
     if(d.cool<=0&&dp<650&&state==='play'){d.cool=rand(2.2,3.8)*DF().rate;const t=dp/215;tmp.copy(P.pos).addScaledVector(P.vel,t*.85).sub(d.g.position).normalize();spawnFire(d.g.position,tmp,215,3.2,11);d.throwT=1;sfx.fire(d.g.position);}}
