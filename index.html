@@ -32,7 +32,11 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 #cross::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:var(--gold);border-radius:50%}
 .arrow{position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--ember);filter:drop-shadow(0 0 6px rgba(229,72,44,.9))}
 #hurt{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(190,20,10,.75) 100%);opacity:0}
-#hint{margin-top:6px;text-align:center;font-size:.92rem;text-shadow:0 1px 8px rgba(0,0,0,.85);transition:opacity 1s}
+#hint{margin-top:6px;align-self:center;text-align:center;font-size:1.05rem;padding:6px 18px;background:rgba(8,10,26,.5);border:1px solid var(--line);text-shadow:0 1px 8px rgba(0,0,0,.85);opacity:0;transition:opacity .35s}
+#hint.on{opacity:1}
+#hint b{font-family:var(--font-display);font-weight:700;letter-spacing:.08em;color:var(--gold)}
+#hint.urgent{border-color:var(--ember);box-shadow:0 0 18px rgba(229,72,44,.7);animation:hintPulse .5s ease-in-out infinite alternate}
+@keyframes hintPulse{to{transform:scale(1.07)}}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,var(--veil) 0%,rgba(8,10,26,.2) 75%);padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
 #menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%),url(keyart.webp) center/cover no-repeat var(--night)}
 .panel{margin-block:auto;max-width:36rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -70,7 +74,7 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 #tbtns button{padding:0;width:74px;height:74px;border-radius:50%;font-size:.62rem;letter-spacing:.1em}
 #tbtns #tFire{width:92px;height:92px;grid-row:span 2;align-self:center}
 #tbtns #tP{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:44px;height:44px;font-size:.8rem}
-body.touch #hint{display:none}
+body.touch #hint{margin-top:auto;max-width:calc(100% - 420px);font-size:.95rem}
 body.touch #skills{display:none}
 .diff{display:flex;gap:6px}
 .diff button{padding:8px 12px;font-size:.72rem;letter-spacing:.14em;background:transparent;color:var(--ivory);border:1px solid var(--line);box-shadow:none}
@@ -79,7 +83,7 @@ body.touch #skills{display:none}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}#hint.urgent{animation:none}}
 </style>
 
 <div id="stage">
@@ -92,7 +96,7 @@ body.touch #skills{display:none}
     </div>
     <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div class="bar"><i id="bossHp"></i></div></div>
     <div id="skills"><div class="skill" id="skJ"><b>F</b><span>Jugement</span></div><div class="skill" id="skE"><b>E</b><span>Esquive</span></div></div>
-    <div id="hint">Souris pour voler · clic ou Espace pour frapper · F ou clic droit : Jugement · E : esquive</div>
+    <div id="hint" role="status"></div>
   </div>
   <div id="cross" hidden></div>
   <div id="lock" hidden></div>
@@ -802,6 +806,21 @@ const words=[];for(let i=0;i<14;i++){const el=document.createElement('div');el.c
 function word(text,pos,cls=''){const w=words.find(w=>!w.on)||words[0];w.on=true;w.t0=time;w.pos.copy(pos);w.el.textContent=text;w.el.className='hitword'+(cls?' '+cls:'');w.el.hidden=false;w.dx=rand(-40,40);w.dy=-(words.filter(o=>o.on&&time-o.t0<.4).length-1)*30;}
 const mult=()=>1+Math.min(4,Math.floor(combo/5))*.5;
 function registerHit(){combo++;comboT=2.4;RUN.maxCombo=Math.max(RUN.maxCombo,combo);}
+/* ---------- invites contextuelles : une commande à la fois, au moment où elle sert, effacée dès le geste réussi ---------- */
+const TUT={done:{},hold:null,shown:''};
+const TUT_TXT={aim:['<b>Souris</b> ou <b>ZQSD</b> : visez un démon','<b>Joystick</b> : visez un démon'],fire:['<b>Clic</b> ou <b>Espace</b> : frappez !','Maintenez <b>Frapper</b>'],
+  dodge:['<b>E</b> : esquivez !','<b>Esquive</b> : évitez la boule de feu !'],judge:['<b>F</b> ou <b>clic droit</b> : Jugement !','<b>Jugement</b> : frappez le groupe !']};
+const learn=k=>{TUT.done[k]=true;};
+function holdHint(html,d){TUT.hold={html,until:time+d};}
+function tutStep(){const d=TUT.done;
+  if(!d.dodge&&P.dodgeCool<=0)for(const f of fires){if(f.life<=0)continue;tmp.copy(P.pos).sub(f.m.position);if(tmp.lengthSq()<260*260&&tmp.dot(f.v)>0)return 'dodge';} // une boule de feu approche
+  if(!d.judge&&P.jCool<=0&&!J.on&&lockT){if(lockT.boss||wave>1)return 'judge';let n=0;for(const o of demons)if(o.g.position.distanceToSquared(lockT.pos)<200*200)n++;if(n>=3)return 'judge';} // trois démons groupés
+  if(!d.aim){if(lockT)learn('aim');else if(demons.length)return 'aim';}
+  if(!d.fire&&lockT)return 'fire';
+  return null;}
+function updateHint(){let k=null,html='';
+  if(state==='play'){k=tutStep();if(k!=='dodge'&&TUT.hold&&time<TUT.hold.until){k=null;html=TUT.hold.html;}else if(k)html=TUT_TXT[k][touchMode?1:0];}
+  if(html===TUT.shown)return;TUT.shown=html;const el=$('hint');if(html)el.innerHTML=html;el.classList.toggle('on',!!html);el.classList.toggle('urgent',k==='dodge');}
 /* ---------- difficulté, statistiques et record ---------- */
 const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75},{n:'Gardien',dmg:1,rate:1,hp:1},{n:'Archange',dmg:1.4,rate:.75,hp:1.3}];
 let diffI=1;try{diffI=+(localStorage.getItem('gdc-diff')??1);if(!(diffI>=0&&diffI<=2))diffI=1;}catch(e){}
@@ -819,7 +838,7 @@ function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,
 const J={g:new THREE.Group(),v:new V(),life:0,on:false};
 J.g.add(new THREE.Mesh(new THREE.SphereGeometry(5,16,12),new THREE.MeshBasicMaterial({color:new THREE.Color(8,6,2.5),fog:false})));J.g.add(glow(0xffe08a,70,.9));J.g.visible=false;scene.add(J.g);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1,.05,8,64),new THREE.MeshBasicMaterial({color:new THREE.Color(6,4.5,1.6),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));ring.visible=false;scene.add(ring);let ringT=0;
-function tryJudgement(){if(state!=='play'||P.jCool>0||J.on)return;P.jCool=J_COOL;J.on=true;J.life=0;J.g.visible=true;J.g.position.copy(P.pos).addScaledVector(fwd,12);
+function tryJudgement(){if(state!=='play'||P.jCool>0||J.on)return;learn('judge');P.jCool=J_COOL;J.on=true;J.life=0;J.g.visible=true;J.g.position.copy(P.pos).addScaledVector(fwd,12);
   const dir=tmp2.copy(fwd);if(lockT){dir.copy(lockT.pos).sub(P.pos).normalize();}J.v.copy(dir).multiplyScalar(430).addScaledVector(P.vel,.5);
   sfx.judge();}
 function explodeJ(){const p=J.g.position;J.on=false;J.g.visible=false;
@@ -836,7 +855,7 @@ function updateJudgement(dt){
   if(J.life>2.6||J.g.position.y<heightAt(J.g.position.x,J.g.position.z)+10)explodeJ();
 }
 /* ---------- esquive en tonneau ---------- */
-function tryDodge(){if(state!=='play'||P.dodgeCool>0)return;P.dodgeT=DODGE_T;P.dodgeCool=DODGE_COOL;P.dodgeDir=(keys.KeyA||keys.ArrowLeft||mx<-.15)?-1:1;sfx.whoosh();}
+function tryDodge(){if(state!=='play'||P.dodgeCool>0)return;learn('dodge');P.dodgeT=DODGE_T;P.dodgeCool=DODGE_COOL;P.dodgeDir=(keys.KeyA||keys.ArrowLeft||mx<-.15)?-1:1;sfx.whoosh();}
 /* ---------- verrouillage de cible ---------- */
 function updateLock(){
   if(state!=='play'){lockT=null;return;}
@@ -893,8 +912,7 @@ function clearField(){for(const d of demons)scene.remove(d.g);demons.length=0;fo
 function startGame(){RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
   initAudio();
   clearField();P.pos.set(0,320,0);P.yaw=0;P.pitch=0;P.hp=100;P.sinceHit=9;P.jCool=0;P.dodgeT=0;P.dodgeCool=0;combo=0;comboT=0;lockT=null;J.on=false;J.g.visible=false;score=0;wave=0;moodTarget=0;state='play';
-  $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;$('hint').style.opacity=1;
-  setTimeout(()=>{$('hint').style.opacity=0;},7000);nextWave();
+  $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;TUT.hold=null;nextWave();
 }
 function nextWave(){wave++;
   if(wave<=3){$('waveLabel').textContent='Vague '+ROMAN[wave-1];banner('Vague '+ROMAN[wave-1],['Les anges déchus approchent.','Ils reviennent plus nombreux.','La dernière légion.'][wave-1]);pending={t:2.6,n:[5,7,9][wave-1]};reinf=[3,6,8][wave-1];phase='fight';sfx.wave();}
@@ -907,7 +925,7 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   dragon.segs.forEach((s,i)=>{s.g.visible=true;s.g.position.copy(dragon.head.position);s.g.position.y-=(i+1)*SPACING;});
   for(const h of dragon.heads){h.alive=true;h.hp=headHp();h.g.visible=true;h.snap=true;h.cool=rand(3,6);h.flash=0;for(const n of h.neck){n.g.visible=true;n.g.position.copy(dragon.head.position);}}
   dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();
-  $('hint').textContent='Le diadème protège chaque tête : frappez quand sa gueule s’embrase.';$('hint').style.opacity=1;setTimeout(()=>{$('hint').style.opacity=0;},9000);phase='boss';sfx.roar();}
+  holdHint('Le diadème protège chaque tête : frappez quand sa gueule s’embrase.',9);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
   if(P.hp<=0){P.hp=0;state='dead';burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('dead').hidden=false;$('cross').hidden=true;}}
 function win(){state='won';moodTarget=0;sfx.win();$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
@@ -956,7 +974,7 @@ function updateBolts(dt){
     if(b.ref&&(b.ref.alive===undefined?demons.includes(b.ref):b.ref.alive)){ // traits verrouillés : légère courbe vers la cible
       tmp.copy(b.tgt).sub(b.m.position);if(tmp.lengthSq()>1){tmp.normalize().multiplyScalar(760);b.v.lerp(tmp,1-Math.exp(-dt*5));b.m.quaternion.setFromUnitVectors(UP,tmp2.copy(b.v).normalize());}}
     b.m.position.addScaledVector(b.v,dt);let hit=false;const p=b.m.position;
-    for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
+    for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;learn('fire');registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
       if(d.hp<=0)killDemon(i);else if(time-d.wordT>.5){word('TOUCHÉ',p);d.wordT=time;}}}
     if(!hit&&dragon.alive&&dragon.dying<0){
       for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=h.cool<1.1||h.lunge>.05;hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
@@ -1014,6 +1032,7 @@ function updateDragon(dt){
 const arrows=[];for(let i=0;i<10;i++){const a=document.createElement('div');a.className='arrow';a.hidden=true;$('arrows').appendChild(a);arrows.push(a);}
 let W=1,Hh=1;
 function updateHud(){
+  updateHint();
   $('hp').style.width=P.hp+'%';$('score').textContent=score;$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
   $('skJ').style.setProperty('--p',1-P.jCool/J_COOL);$('skJ').classList.toggle('ready',P.jCool<=0&&!J.on);
   $('skE').style.setProperty('--p',1-P.dodgeCool/DODGE_COOL);$('skE').classList.toggle('ready',P.dodgeCool<=0);
@@ -1057,6 +1076,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get tuto(){return TUT;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

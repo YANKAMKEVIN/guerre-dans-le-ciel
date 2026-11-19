@@ -1,6 +1,6 @@
 // Critiques automatiques : des pilotes jouent le jeu et rendent un rapport chiffré.
 // Usage : cd tests && npm install && node critiques.js [nom...]
-// Critiques : visee, moyen, debutant, perf, lisibilite, son. Sans argument, toutes.
+// Critiques : visee, moyen, debutant, perf, lisibilite, interface, son. Sans argument, toutes.
 // Le rapport est écrit dans tests/out/rapport.json, les captures dans tests/out/.
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
@@ -94,6 +94,26 @@ const CRITIQUES={
     for(let i=0;i<6;i++){await place();await p.waitForTimeout(250);}const calme=await brule('lisibilite-dragon.png');
     await p.evaluate(()=>__dbg.dragon.heads.forEach(h=>h.cool=.15));for(let i=0;i<3;i++){await place();await p.waitForTimeout(200);}const tir=await brule('lisibilite-tir.png');
     await p.close();return {pixels_brules_dragon_calme_pct:calme,pixels_brules_pendant_tir_pct:tir,erreurs:errs};},
+  // interface : chaque point vaut vrai ou faux ; tout doit être vrai
+  async interface(browser){const {p,errs}=await open(browser);const ok={};await p.evaluate(()=>__dbg.fast());
+    await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
+    // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');
+      const hint=()=>el.classList.contains('on')?el.textContent:'',until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      const calm=()=>{for(const d of D.demons)d.cool=99;for(const f of D.fires){f.life=0;f.m.visible=false;}P.hp=100;};
+      const fwd=()=>P.vel.clone().normalize();
+      // les démons sont tenus derrière l'ange, puis l'un d'eux est amené devant
+      const hold=setInterval(()=>{calm();D.demons.forEach((d,i)=>{d.g.position.copy(P.pos).addScaledVector(fwd(),window.__front&&i<window.__front?300:-400);d.g.position.x+=i*30;d.v.set(0,0,0);});},16);
+      D.input(0,0,false);r.invite_viser=await until(()=>/visez/i.test(hint()));
+      window.__front=1;r.invite_frapper=await until(()=>/frappez/i.test(hint()))&&D.tuto.done.aim===true;
+      D.input(0,0,true);r.frapper_appris=await until(()=>D.tuto.done.fire===true);D.input(0,0,false);
+      window.__front=3;r.invite_jugement=await until(()=>/jugement/i.test(hint()));D.judge();r.jugement_appris=await until(()=>D.tuto.done.judge===true&&!/jugement/i.test(hint()));
+      window.__front=0;clearInterval(hold);await wait(200);
+      const fb=setInterval(()=>{const f=D.fires[0];f.life=3;f.dmg=0;f.r=3;f.m.visible=true;f.m.position.copy(P.pos).addScaledVector(fwd(),150);f.v.copy(fwd()).multiplyScalar(-1);},16);
+      r.invite_esquive=await until(()=>/esquive/i.test(hint())&&el.classList.contains('urgent'));D.dodge();
+      r.esquive_apprise=await until(()=>D.tuto.done.dodge===true&&!el.classList.contains('urgent'));clearInterval(fb);D.fires[0].life=0;D.fires[0].m.visible=false;
+      return r;}));
+    await p.close();const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);
     const r=await p.evaluate(async()=>{const A=__dbg.AU,ac=__dbg.ac;if(!A)return {erreur:'audio non initialisé'};const an=ac.createAnalyser();an.fftSize=2048;A.master.connect(an);const b=new Float32Array(2048);let peak=0,sum=0,n=0;
