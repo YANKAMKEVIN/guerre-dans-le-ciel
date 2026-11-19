@@ -113,6 +113,13 @@ const CRITIQUES={
       r.invite_esquive=await until(()=>/esquive/i.test(hint())&&el.classList.contains('urgent'));D.dodge();
       r.esquive_apprise=await until(()=>D.tuto.done.dodge===true&&!el.classList.contains('urgent'));clearInterval(fb);D.fires[0].life=0;D.fires[0].m.visible=false;
       return r;}));
+    // tactile : la recharge se lit sur les boutons ronds (anneau, bouton sombre, éclat au retour)
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),tJ=document.getElementById('tJ'),tE=document.getElementById('tE');
+      const st=document.getElementById('stage');st.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'touch',pointerId:7,bubbles:true,clientX:20,clientY:200}));dispatchEvent(new PointerEvent('pointerup',{pointerType:'touch',pointerId:7,bubbles:true}));D.input(0,0,false);
+      P.jCool=0;P.dodgeCool=0;await wait(300);r.tactile_boutons_prets=tJ.classList.contains('ready')&&tE.classList.contains('ready')&&!!tJ.querySelector('svg')&&tJ.getAttribute('aria-label')==='Jugement';
+      D.judge();D.dodge();await wait(300);const pj=+tJ.style.getPropertyValue('--p');r.tactile_recharge_visible=!tJ.classList.contains('ready')&&!tE.classList.contains('ready')&&pj>=0&&pj<.5;
+      P.jCool=.05;P.dodgeCool=.05;const t0=D.time;while(D.time-t0<4&&!(tJ.classList.contains('ready')&&tE.classList.contains('ready')))await wait(30);r.tactile_eclat_au_retour=tJ.classList.contains('ready')&&tJ.classList.contains('flash')&&tE.classList.contains('flash');
+      return r;}));
     await p.close();const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);

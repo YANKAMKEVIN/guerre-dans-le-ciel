@@ -71,7 +71,13 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 #joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:1.5px solid var(--line);background:rgba(8,10,26,.25);display:none}
 #joy i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(247,237,211,.55)}
 #tbtns{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,auto);gap:10px;pointer-events:auto}
-#tbtns button{padding:0;width:74px;height:74px;border-radius:50%;font-size:.62rem;letter-spacing:.1em}
+#tbtns button{position:relative;padding:0;width:74px;height:74px;border-radius:50%;font-size:.62rem;letter-spacing:.1em;display:grid;place-items:center}
+#tbtns svg{position:relative;width:42%;height:42%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+/* recharge dessinée sur le bouton : anneau doré qui se remplit, bouton sombre tant qu'il n'est pas prêt, éclat à la disponibilité */
+#tbtns .cd:not(.ready){background:conic-gradient(var(--gold) calc(var(--p,1) * 360deg),rgba(8,10,26,.6) 0);color:rgba(247,237,211,.55);box-shadow:none}
+#tbtns .cd:not(.ready)::before{content:"";position:absolute;inset:5px;border-radius:50%;background:rgba(8,10,26,.86)}
+#tbtns .cd.flash{animation:cdReady .5s ease-out}
+@keyframes cdReady{0%{transform:scale(1.22);box-shadow:0 0 0 0 rgba(243,197,82,.9),0 0 44px rgba(255,244,214,1)}100%{transform:scale(1);box-shadow:0 0 0 26px rgba(243,197,82,0),0 0 28px rgba(243,197,82,.55)}}
 #tbtns #tFire{width:92px;height:92px;grid-row:span 2;align-self:center}
 #tbtns #tP{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:44px;height:44px;font-size:.8rem}
 body.touch #hint{margin-top:auto;max-width:calc(100% - 420px);font-size:.95rem}
@@ -83,7 +89,7 @@ body.touch #skills{display:none}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}#hint.urgent{animation:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}#hint.urgent,#tbtns .cd.flash{animation:none}}
 </style>
 
 <div id="stage">
@@ -102,7 +108,12 @@ body.touch #skills{display:none}
   <div id="lock" hidden></div>
   <div id="touch" hidden>
     <div id="joy"><i></i></div>
-    <div id="tbtns"><button type="button" id="tFire">Frapper</button><button type="button" id="tJ">Jugement</button><button type="button" id="tE">Esquive</button><button type="button" id="tB">Élan</button><button type="button" id="tP" class="ghost">II</button></div>
+    <div id="tbtns">
+      <button type="button" id="tFire" aria-label="Frapper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 19 5M11 5h8v8M4 12l2 2M10 20l2-2"/></svg></button>
+      <button type="button" id="tJ" class="cd ready" aria-label="Jugement"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2 19 19M19 5l-2.8 2.8M7.8 16.2 5 19"/></svg></button>
+      <button type="button" id="tE" class="cd ready" aria-label="Esquive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 3v6h-6"/></svg></button>
+      <button type="button" id="tB" aria-label="Élan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l7-7 7 7M5 19l7-7 7 7"/></svg></button>
+      <button type="button" id="tP" class="ghost" aria-label="Pause">II</button></div>
   </div>
   <div id="words"></div>
   <div id="arrows"></div>
@@ -1031,11 +1042,13 @@ function updateDragon(dt){
 /* ---------- interface ---------- */
 const arrows=[];for(let i=0;i<10;i++){const a=document.createElement('div');a.className='arrow';a.hidden=true;$('arrows').appendChild(a);arrows.push(a);}
 let W=1,Hh=1;
+// recharge d'une compétence : anneau (--p), état prêt, éclat à l'instant où elle redevient disponible
+function cdUi(el,p,ready){el.style.setProperty('--p',p.toFixed(3));const was=el.classList.contains('ready');if(ready!==was){el.classList.toggle('ready',ready);el.classList.toggle('flash',ready);}}
 function updateHud(){
   updateHint();
   $('hp').style.width=P.hp+'%';$('score').textContent=score;$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
-  $('skJ').style.setProperty('--p',1-P.jCool/J_COOL);$('skJ').classList.toggle('ready',P.jCool<=0&&!J.on);
-  $('skE').style.setProperty('--p',1-P.dodgeCool/DODGE_COOL);$('skE').classList.toggle('ready',P.dodgeCool<=0);
+  const jp=1-P.jCool/J_COOL,jr=P.jCool<=0&&!J.on,ep=1-P.dodgeCool/DODGE_COOL,er=P.dodgeCool<=0;
+  if(touchMode){cdUi($('tJ'),jp,jr);cdUi($('tE'),ep,er);}else{cdUi($('skJ'),jp,jr);cdUi($('skE'),ep,er);}
   const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;lk.classList.toggle('boss',lockT.boss);
     const sc=1+Math.sin(time*7)*.06;lk.style.left=((tmp.x*.5+.5)*W)+'px';lk.style.top=((-tmp.y*.5+.5)*Hh)+'px';lk.style.transform='rotate('+(45+time*60)+'deg) scale('+sc+')';}else lk.hidden=true;}else lk.hidden=true;
   for(const w of words){if(!w.on)continue;const age=time-w.t0;if(age>.95){w.on=false;w.el.hidden=true;continue;}
