@@ -1068,7 +1068,7 @@ addEventListener('resize',resize);new ResizeObserver(resize).observe(stage);resi
 /* ---------- boucle ---------- */
 const camPos=new V(0,270,30);let frameMs=16;let last=performance.now();
 function frame(now){
-  let dt=Math.min(.05,(now-last)/1000);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}time+=dt;
+  let dt=clamp((now-last)/1000,0,.05);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}time+=dt;
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
   updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
