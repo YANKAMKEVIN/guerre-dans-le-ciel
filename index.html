@@ -68,6 +68,19 @@ h1{font-family:var(--font-display);font-weight:900;font-size:clamp(2.1rem,8vw,4.
 .verse cite{display:block;font-style:normal;font-family:var(--font-display);font-size:.72rem;letter-spacing:.22em;color:var(--gold);margin-top:.5em}
 .keys{display:grid;grid-template-columns:auto auto;gap:4px 18px;text-align:left;font-size:.95rem;margin:4px 0}
 .keys b{font-family:var(--font-display);font-weight:500;letter-spacing:.08em;color:var(--gold)}
+/* commandes dessinées comme des touches ; clavier ou tactile selon l'appareil */
+kbd{display:inline-block;min-width:1.55em;margin:0 1px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:3px;border-radius:5px;background:rgba(8,10,26,.6);font-family:var(--font-display);font-size:.78rem;font-weight:700;letter-spacing:.04em;color:var(--ivory);text-align:center}
+.keys{align-items:center}
+.cmds{display:contents}
+body:is(.touch,.coarse) .keys.kb,body:not(.touch,.coarse) .keys.tc{display:none}
+/* volet « Commandes et réglages » : le centre du menu ne garde que le titre, le verset, la difficulté et le départ */
+details.more{display:flex;flex-direction:column;align-items:center}
+details.more summary{list-style:none;cursor:pointer;font-family:var(--font-display);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ivory);padding:8px 16px;border:1px solid var(--line);background:rgba(8,10,26,.35)}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:" ▾";color:var(--gold)}
+details.more[open] summary::after{content:" ▴"}
+details.more summary:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
+details.more .inner{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:12px;padding:14px 18px;background:rgba(8,10,26,.62);border:1px solid var(--line)}
 button{font-family:var(--font-display);font-weight:700;font-size:1rem;letter-spacing:.2em;text-transform:uppercase;color:var(--night);background:linear-gradient(180deg,var(--ivory),var(--gold));border:0;padding:14px 30px;cursor:pointer;box-shadow:0 0 28px rgba(243,197,82,.55);pointer-events:auto}
 button:hover{filter:brightness(1.08)}
 button.ghost{background:transparent;color:var(--ivory);border:1px solid var(--line);box-shadow:none}
@@ -80,6 +93,7 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 #words{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .hitword{position:absolute;left:0;top:0;font-family:var(--font-display);font-weight:900;font-size:1.45rem;letter-spacing:.06em;color:var(--ivory);-webkit-text-stroke:1.5px #3a1208;paint-order:stroke fill;text-shadow:0 0 14px rgba(243,197,82,.85);white-space:nowrap;will-change:transform,opacity}
 .hitword.kill{font-size:2.2rem;color:var(--gold)}
+.hitword.feat{font-size:clamp(2.2rem,5.5vw,3.3rem);letter-spacing:.1em;color:#fffbe9;-webkit-text-stroke:2px #3a1208;text-shadow:0 0 26px rgba(243,197,82,1),0 0 8px rgba(255,255,255,.8)}
 .hitword.crit{font-size:1.85rem;color:#ffe2b8;text-shadow:0 0 16px rgba(229,72,44,.95)}
 #combo{font-family:var(--font-display);font-weight:700;color:var(--gold);text-align:right;font-size:calc(1.05rem + var(--tier,0) * .13rem);min-height:1.3em;text-shadow:0 1px 8px rgba(0,0,0,.7);transform-origin:right center}
 #combo.bump{animation:comboBump .5s ease-out}
@@ -93,7 +107,6 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .skill{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--line);background:conic-gradient(rgba(243,197,82,.5) calc(var(--p,1) * 360deg),rgba(8,10,26,.55) 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .skill b{font-family:var(--font-display);font-size:1rem;line-height:1;color:var(--ivory)}
 .skill span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ivory)}
-.hitword.feat{font-size:clamp(2.2rem,5.5vw,3.3rem);letter-spacing:.1em;color:#fffbe9;-webkit-text-stroke:2px #3a1208;text-shadow:0 0 26px rgba(243,197,82,1),0 0 8px rgba(255,255,255,.8)}
 .skill.ready{border-color:var(--gold);box-shadow:0 0 16px rgba(243,197,82,.75)}
 .vol{display:grid;grid-template-columns:auto min(46vw,180px);gap:6px 14px;align-items:center;font-size:.9rem}
 .vol label{font-family:var(--font-display);letter-spacing:.08em;color:var(--gold);text-align:left}
@@ -142,7 +155,7 @@ body.touch #skills{display:none}
 .seal{display:inline-grid;place-items:center;vertical-align:middle;width:62px;height:62px;margin-left:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6d2,var(--gold) 55%,#a86a00);border:2px dashed rgba(90,56,4,.7);color:#3a2204;font-size:.56rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:0;transform:rotate(-12deg) scale(2.2);transition:opacity .25s,transform .35s cubic-bezier(.2,1.5,.4,1)}
 .seal.in{opacity:1;transform:rotate(-12deg);animation:sealShine 1.4s ease-in-out .4s infinite alternate}
 @keyframes sealShine{from{box-shadow:0 0 10px rgba(243,197,82,.5)}to{box-shadow:0 0 30px 6px rgba(255,246,210,.95)}}
-@media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
+@media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}details.more .inner{gap:8px;padding:10px 14px}}
 @media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown,.stats > *,.rank,.seal{transition:none}#hint.urgent,#combo.bump,.screen.fade,.seal.in,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
@@ -179,21 +192,33 @@ body.touch #skills{display:none}
       <div class="eyebrow">Apocalypse, chapitre 12</div>
       <h1>Guerre dans le Ciel</h1>
       <p class="verse">« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. »<cite>Apocalypse 12:7</cite></p>
-      <div class="keys">
-        <b>Souris ou ZQSD</b><span>diriger le vol</span>
-        <b>Clic ou Espace</b><span>traits de lumière</span>
-        <b>F ou clic droit</b><span>Jugement, frappe de zone</span>
-        <b>E</b><span>esquive en tonneau</span>
-        <b>Maj</b><span>accélérer</span>
-        <b>M / N</b><span>couper le son / la musique</span>
-      </div>
       <div class="diff" role="radiogroup" aria-label="Difficulté"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
       <div class="diffInfo"></div>
       <div class="best" id="best"></div>
-      <div class="vol"><label for="volM">Musique</label><input type="range" id="volM" min="0" max="100"><label for="volS">Effets</label><input type="range" id="volS" min="0" max="100">
-        <label for="sens">Sensibilité</label><input type="range" id="sens" class="sens" min="50" max="150" step="5"><label for="invY">Inverser haut/bas</label><input type="checkbox" id="invY" class="invY"></div>
-      <div class="btnrow"><button type="button" class="ghost fs" hidden>Plein écran</button></div>
       <button id="play" type="button" disabled>Préparation du ciel…</button>
+      <details class="more" id="more"><summary>Commandes et réglages</summary><div class="inner">
+        <div class="cmds" id="cmds">
+        <div class="keys kb">
+          <b><kbd>Souris</kbd> ou <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd></b><span>diriger le vol</span>
+          <b><kbd>Clic</kbd> ou <kbd>Espace</kbd></b><span>traits de lumière</span>
+          <b><kbd>F</kbd> ou <kbd>Clic droit</kbd></b><span>Jugement, frappe de zone</span>
+          <b><kbd>E</kbd></b><span>esquive en tonneau</span>
+          <b><kbd>Maj</kbd></b><span>accélérer</span>
+          <b><kbd>Échap</kbd></b><span>pause</span>
+          <b><kbd>M</kbd> / <kbd>N</kbd></b><span>couper le son / la musique</span>
+        </div>
+        <div class="keys tc">
+          <b>Pouce gauche</b><span>joystick : diriger le vol</span>
+          <b>Grand bouton</b><span>traits de lumière (maintenir)</span>
+          <b>Soleil</b><span>Jugement, frappe de zone</span>
+          <b>Flèche ronde</b><span>esquive en tonneau</span>
+          <b>Chevrons</b><span>accélérer (maintenir)</span>
+        </div>
+        </div>
+        <div class="vol"><label for="volM">Musique</label><input type="range" id="volM" min="0" max="100"><label for="volS">Effets</label><input type="range" id="volS" min="0" max="100">
+        <label for="sens">Sensibilité</label><input type="range" id="sens" class="sens" min="50" max="150" step="5"><label for="invY">Inverser haut/bas</label><input type="checkbox" id="invY" class="invY"></div>
+        <div class="btnrow"><button type="button" class="ghost fs" hidden>Plein écran</button></div>
+      </div></details>
     </div>
   </div>
   <div class="screen" id="pause" hidden>
@@ -202,7 +227,7 @@ body.touch #skills{display:none}
       <h1>Le ciel retient son souffle</h1>
       <div class="vol"><label for="volM2">Musique</label><input type="range" id="volM2" min="0" max="100"><label for="volS2">Effets</label><input type="range" id="volS2" min="0" max="100">
         <label for="sens2">Sensibilité</label><input type="range" id="sens2" class="sens" min="50" max="150" step="5"><label for="invY2">Inverser haut/bas</label><input type="checkbox" id="invY2" class="invY"></div>
-      <div class="keys" id="pauseKeys"></div>
+      <div class="cmds" id="pauseKeys"></div>
       <button id="resume" type="button">Reprendre</button>
       <div class="btnrow"><button id="restart" type="button" class="ghost">Recommencer</button><button id="pauseMenu" type="button" class="ghost">Menu</button><button type="button" class="ghost fs" hidden>Plein écran</button></div>
     </div>
@@ -1070,7 +1095,7 @@ $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
 $('volM').value=Math.round(VOL.music*100);$('volS').value=Math.round(VOL.sfx*100);
 $('pauseMenu').onclick=$('deadMenu').onclick=$('wonMenu').onclick=toMenu;$('easier').onclick=()=>{setDiff(diffI-1);startGame();};
-$('pauseKeys').innerHTML=document.querySelector('#menu .keys').innerHTML; // rappel des commandes dans la pause
+$('pauseKeys').innerHTML=$('cmds').innerHTML;if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('coarse'); // rappel des commandes dans la pause
 $('resume').onclick=()=>togglePause(false);$('restart').onclick=()=>{togglePause(false);startGame();};
 $('volM2').oninput=e=>{VOL.music=e.target.value/100;setVolumes();};$('volS2').oninput=e=>{VOL.sfx=e.target.value/100;setVolumes();};
 $('volM').oninput=e=>{VOL.music=e.target.value/100;setVolumes();};$('volS').oninput=e=>{VOL.sfx=e.target.value/100;setVolumes();if(AU)sfx.shoot();};

@@ -169,7 +169,7 @@ const CRITIQUES={
     // pause et écrans de fin : retour au menu, rappel des commandes, difficulté ajustable après une défaite
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),vis=id=>!$(id).hidden;
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
-      window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&$('pauseKeys').children.length>=6;
+      window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&document.querySelectorAll('#pauseKeys .keys.kb kbd').length>=8&&!!document.querySelector('#pauseKeys .keys.tc');
       $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
       D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.gain(1234);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
       r.chute_mise_en_scene=sec&&$('dead').classList.contains('fade')&&D.camera.position.distanceTo(D.P.pos)>70; // le panneau attend la chute, la caméra s'est éloignée
@@ -182,6 +182,9 @@ const CRITIQUES={
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
       D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');r.pas_de_sceau_sans_record=!document.querySelector('#deadScore .seal');
       $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
+      // menu allégé : commandes (touches dessinées) et réglages rangés dans un volet fermé au départ
+      {const m=$('more'),v=e=>e.checkVisibility();r.menu_volet_ferme=!m.open&&!v($('volM'))&&v($('play'))&&!document.querySelector('#menu .panel > .keys');
+       m.open=true;r.menu_volet_ouvert=v($('volM'))&&v($('sens'))&&m.querySelectorAll('kbd').length>=8;m.open=false;}
       // difficulté : une ligne dit ce qu'elle change ; une étoile marque celles déjà vaincues
       const info=()=>document.querySelector('#menu .diffInfo').textContent,star=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').dataset.won==='1';
       D.setDiff(0);const i0=info();D.setDiff(2);const i2=info();r.difficulte_expliquee=/Pèlerin/.test(i0)&&/adoucis/.test(i0)&&/Archange/.test(i2)&&/résistants/.test(i2);
