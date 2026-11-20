@@ -1,6 +1,6 @@
 // Critiques automatiques : des pilotes jouent le jeu et rendent un rapport chiffré.
 // Usage : cd tests && npm install && node critiques.js [nom...]
-// Critiques : visee, moyen, debutant, perf, lisibilite, son. Sans argument, toutes.
+// Critiques : visee, moyen, debutant, perf, lisibilite, interface, son. Sans argument, toutes.
 // Le rapport est écrit dans tests/out/rapport.json, les captures dans tests/out/.
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
@@ -10,8 +10,8 @@ const THREE_DIR=path.join(__dirname,'node_modules','three');
 const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}html,body{height:100%}</style></head><body>'
   +fs.readFileSync(path.join(ROOT,'index.html'),'utf8')+'</body></html>';
 
-async function open(browser,{w=480,h=270,diff=1}={}){
-  const p=await browser.newPage({viewport:{width:w,height:h}});const errs=[];
+async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
+  const p=await browser.newPage({viewport:{width:w,height:h},hasTouch:touch,isMobile:touch});p.setDefaultTimeout(120000);const errs=[]; // large : le rendu logiciel peut être très lent
   p.on('pageerror',e=>errs.push(e.message));
   p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|GPU stall/.test(m.text()))errs.push(m.text().slice(0,200));});
   await p.route('https://cdn.jsdelivr.net/npm/three@0.160.0/**',r=>r.fulfill({body:fs.readFileSync(path.join(THREE_DIR,r.request().url().split('three@0.160.0/')[1])),contentType:'application/javascript'}));
@@ -21,7 +21,7 @@ async function open(browser,{w=480,h=270,diff=1}={}){
   await p.goto('http://jeu.local/');
   await p.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:90000});
   await p.evaluate(d=>__dbg.setDiff(d),diff);
-  await p.click('#play');
+  if(play)await p.click('#play');
   return {p,errs};
 }
 
@@ -94,6 +94,112 @@ const CRITIQUES={
     for(let i=0;i<6;i++){await place();await p.waitForTimeout(250);}const calme=await brule('lisibilite-dragon.png');
     await p.evaluate(()=>__dbg.dragon.heads.forEach(h=>h.cool=.15));for(let i=0;i<3;i++){await place();await p.waitForTimeout(200);}const tir=await brule('lisibilite-tir.png');
     await p.close();return {pixels_brules_dragon_calme_pct:calme,pixels_brules_pendant_tir_pct:tir,erreurs:errs};},
+  // interface : chaque point vaut vrai ou faux ; tout doit être vrai
+  async interface(browser){const {p,errs}=await open(browser);const ok={};await p.evaluate(()=>__dbg.fast());
+    await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
+    // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');
+      const hint=()=>el.classList.contains('on')?el.textContent:'',until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      const calm=()=>{for(const d of D.demons)d.cool=99;for(const f of D.fires){f.life=0;f.m.visible=false;}P.hp=100;};
+      const fwd=()=>P.vel.clone().normalize();
+      // les démons sont tenus derrière l'ange, puis l'un d'eux est amené devant
+      const hold=setInterval(()=>{calm();D.demons.forEach((d,i)=>{d.g.position.copy(P.pos).addScaledVector(fwd(),window.__front&&i<window.__front?300:-400);d.g.position.x+=i*30;d.v.set(0,0,0);});},16);
+      D.input(0,0,false);r.invite_viser=await until(()=>/visez/i.test(hint()));
+      window.__front=1;r.invite_frapper=await until(()=>/frappez/i.test(hint()))&&D.tuto.done.aim===true;
+      D.input(0,0,true);r.frapper_appris=await until(()=>D.tuto.done.fire===true);D.input(0,0,false);
+      window.__front=3;r.invite_jugement=await until(()=>/jugement/i.test(hint()));D.judge();r.jugement_appris=await until(()=>D.tuto.done.judge===true&&!/jugement/i.test(hint()));
+      window.__front=0;clearInterval(hold);await wait(200);
+      const fb=setInterval(()=>{const f=D.fires[0];f.life=3;f.dmg=0;f.r=3;f.m.visible=true;f.m.position.copy(P.pos).addScaledVector(fwd(),150);f.v.copy(fwd()).multiplyScalar(-1);},16);
+      r.invite_esquive=await until(()=>/esquive/i.test(hint())&&el.classList.contains('urgent'));D.dodge();
+      r.esquive_apprise=await until(()=>D.tuto.done.dodge===true&&!el.classList.contains('urgent'));clearInterval(fb);D.fires[0].life=0;D.fires[0].m.visible=false;
+      return r;}));
+    // combo : jauge de temps qui se vide, palier de multiplicateur mis en avant, points gagnés près de l'ennemi, score formaté
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),bar=$('comboBar'),w=()=>parseFloat(bar.firstElementChild.style.width);
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      // mots d'impact : variés pour un démon, réservés et plus grands pour les exploits
+      {const ws=new Set([0,.4,.99].map(x=>D.killWord(false,false,x)[0]));r.mots_varies=ws.size===3&&D.killWord(false,false,.1)[1]==='kill'&&D.killWord(true,false)[0]==='JUGÉ !';
+       r.mots_d_exploit=D.killWord(false,true)[1]==='feat'&&D.multiWord(1)===null&&D.multiWord(2)==='DOUBLÉ !'&&D.multiWord(3)==='TRIPLÉ !'&&!!D.multiWord(5);}
+      r.score_formate=D.fmtN(12400).replace(/\s/g,' ')==='12 400'&&D.fmtN(950)==='950';
+      await until(()=>D.combo===0,4);r.jauge_cachee_sans_combo=!bar.classList.contains('on');
+      for(let i=0;i<4;i++)D.hit();r.jauge_combo=await until(()=>bar.classList.contains('on')&&w()>60&&/×4/.test($('combo').textContent),3);const w0=w();
+      r.jauge_se_vide=await until(()=>w()<w0-15,3);D.hit();r.palier_mis_en_avant=await until(()=>$('combo').classList.contains('bump')&&$('combo').style.getPropertyValue('--tier')==='1'&&/score ×1[.,]5/.test($('combo').textContent),3);
+      const d=D.demons[0],s0=D.score,n0=D.demons.length;d.hp=1;d.cool=99;const hold=setInterval(()=>{P.hp=100;if(D.demons.includes(d)){d.g.position.copy(P.pos).addScaledVector(P.vel.clone().normalize(),260);d.v.set(0,0,0);}},16);D.input(0,0,true);
+      r.points_pres_de_l_ennemi=await until(()=>[...document.querySelectorAll('.hitword.pts')].some(e=>!e.hidden&&/^\+\d/.test(e.textContent)),15)&&D.demons.length===n0-1&&D.score>s0;
+      D.input(0,0,false);clearInterval(hold);r.score_affiche=await until(()=>$('score').textContent===D.fmtN(D.score),3);return r;}));
+    // Lumière basse : barre braise, liseré rouge, musique assourdie ; la part regagnée s'affiche en plus clair
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),bar=document.getElementById('hpBar'),dg=document.getElementById('danger'),g=document.getElementById('hpGain');
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      for(const d of D.demons)d.cool=99;P.hp=100;await wait(200);r.lumiere_haute_sans_alerte=!bar.classList.contains('low')&&!dg.classList.contains('on');
+      P.hp=22;P.sinceHit=0;r.lumiere_basse_alerte=await until(()=>bar.classList.contains('low')&&dg.classList.contains('on'));
+      r.musique_assourdie=!D.AU||await until(()=>D.AU.mlp.frequency.value<3000,6);
+      P.sinceHit=6;r.regeneration_visible=await until(()=>g.classList.contains('on')&&parseFloat(g.style.width)>0&&Math.abs(parseFloat(g.style.left)-22)<1.5,6);
+      P.hp=80;P.sinceHit=0;r.alerte_levee=await until(()=>!bar.classList.contains('low')&&!dg.classList.contains('on')&&!g.classList.contains('on'));P.hp=100;return r;}));
+    // Dragon : sept diadèmes, fissurés selon les dégâts, brisés quand la tête tombe, brillants gueule embrasée
+    await p.evaluate(()=>__dbg.boss());await p.waitForFunction(()=>__dbg.dragon.alive,null,{timeout:120000});
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,H=D.dragon.heads,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),cr=[...document.querySelectorAll('#crowns .crown')],has=(i,c)=>cr[i].classList.contains(c);
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();},max=H[6].hp;
+      const keep=setInterval(()=>{P.hp=100;H.forEach((h,i)=>{if(i!==3)h.cool=50;});},16);await wait(200);
+      r.sept_diademes=cr.length===7&&await until(()=>cr.every(c=>c.classList.length===1||(c.classList.length===2&&c.classList.contains('open'))),5);
+      H[1].hp=max*.5;H[2].hp=max*.2;H[0].alive=false;H[0].hp=0;H[0].g.visible=false;
+      r.diademes_fissures=await until(()=>has(1,'d1')&&has(2,'d2')&&!has(1,'d2'),5);r.diademe_brise=await until(()=>has(0,'dead'),5);
+      H[3].cool=50;r.diademe_ferme=await until(()=>!has(3,'open'),5);H[3].cool=.9;r.diademe_embrase=await until(()=>has(3,'open')&&!has(4,'open'),5);
+      // hors champ : le Dragon a sa flèche en fer de lance ; une boule de feu qui approche de dos allume un arc orange, plus vif de près
+      const fw=()=>P.vel.clone().normalize(),arcs=()=>[...document.querySelectorAll('.farc')].filter(a=>!a.hidden),F=D.fires[1];let dist=300,front=false;
+      const put=setInterval(()=>{D.dragon.head.position.copy(P.pos).addScaledVector(fw(),-500);F.life=3;F.dmg=0;F.r=3;F.m.visible=true;F.m.position.copy(P.pos).addScaledVector(fw(),front?dist:-dist);F.v.copy(fw()).multiplyScalar(front?-1:1);},16);
+      r.fleche_dragon_distincte=await until(()=>!!document.querySelector('.arrow.boss:not([hidden])'),5);
+      r.arc_boule_de_feu=await until(()=>arcs().length===1,5);const o1=+arcs()[0]?.style.opacity;dist=80;await until(()=>arcs().length===1&&+arcs()[0].style.opacity>o1+.3,5);r.arc_plus_vif_de_pres=+arcs()[0]?.style.opacity>o1+.3;
+      front=true;dist=150;r.pas_d_arc_a_l_ecran=await until(()=>arcs().length===0,5);clearInterval(put);
+      clearInterval(keep);H.forEach(h=>h.cool=999);for(const f of D.fires){f.life=0;f.m.visible=false;}P.hp=100;return r;}));
+    // tactile : la recharge se lit sur les boutons ronds (anneau, bouton sombre, éclat au retour)
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),tJ=document.getElementById('tJ'),tE=document.getElementById('tE');
+      const st=document.getElementById('stage');st.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'touch',pointerId:7,bubbles:true,clientX:20,clientY:200}));dispatchEvent(new PointerEvent('pointerup',{pointerType:'touch',pointerId:7,bubbles:true}));D.input(0,0,false);
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();},rdy=e=>e.classList.contains('ready');
+      P.jCool=0;P.dodgeCool=0;r.tactile_boutons_prets=await until(()=>rdy(tJ)&&rdy(tE))&&!!tJ.querySelector('svg')&&tJ.getAttribute('aria-label')==='Jugement';
+      D.judge();D.dodge();r.tactile_recharge_visible=await until(()=>!rdy(tJ)&&!rdy(tE)&&+tJ.style.getPropertyValue('--p')<.5,3);
+      P.jCool=.05;P.dodgeCool=.05;r.tactile_eclat_au_retour=await until(()=>rdy(tJ)&&rdy(tE),4)&&tJ.classList.contains('flash')&&tE.classList.contains('flash');
+      return r;}));
+    // réglages de pilotage : sensibilité et inversion haut/bas, appliqués au vol et mémorisés
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id);
+      const turn=async(x,y,k)=>{D.input(0,0,false);const t0=D.time;while(D.time-t0<.4)await wait(20);P.pitch=0;const a=P[k],t1=D.time;D.input(x,y,false);while(D.time-t1<.5)await wait(20);D.input(0,0,false);return P[k]-a;};
+      const set=(id,v)=>{const e=$(id);if(e.type==='checkbox'){if(e.checked!==v)e.click();}else{e.value=v;e.dispatchEvent(new Event('input'));}};
+      P.pos.y=600;set('sens2',100);set('invY2',false);const up=await turn(0,-.6,'pitch');set('invY2',true);const inv=await turn(0,-.6,'pitch');set('invY2',false);
+      r.inversion_haut_bas=up>.05&&inv<-.05&&$('invY').checked===false;
+      const y1=Math.abs(await turn(.5,0,'yaw'));set('sens',50);const y2=Math.abs(await turn(.5,0,'yaw'));
+      r.sensibilite=y2<y1*.75&&y2>y1*.3&&$('sens2').value==='50'&&JSON.parse(localStorage.getItem('gdc-set')).sens===.5;set('sens',100);P.pitch=0;return r;}));
+    // pause et écrans de fin : retour au menu, rappel des commandes, difficulté ajustable après une défaite
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),vis=id=>!$(id).hidden;
+      const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
+      window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&document.querySelectorAll('#pauseKeys .keys.kb kbd').length>=8&&!!document.querySelector('#pauseKeys .keys.tc');
+      $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
+      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);r.image_fondue_en_jeu=await until(()=>$('art').classList.contains('off'),3);D.gain(1234);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      r.chute_mise_en_scene=sec&&$('dead').classList.contains('fade')&&D.camera.position.distanceTo(D.P.pos)>70; // le panneau attend la chute, la caméra s'est éloignée
+      // fin de partie : le score défile jusqu'à sa valeur, les lignes se révèlent, puis le rang ; sceau doré pour un record
+      r.rangs=D.rankOf(false,1000,100)===0&&D.rankOf(false,30000,100)===1&&D.rankOf(true,10000,100)===1&&D.rankOf(true,60000,61)===1&&D.rankOf(true,60000,40)===2&&D.rankOf(false,90000,0)===1;
+      const num=()=>document.querySelector('#deadScore .num').textContent,rows=[...$('deadStats').children],n0=rows.filter(e=>e.classList.contains('in')).length;
+      r.decompte_progressif=n0<rows.length&&!$('deadRank').classList.contains('in');
+      r.decompte_termine=await until(()=>$('deadRank').classList.contains('in'),15)&&num()===D.fmtN(1234)&&rows.every(e=>e.classList.contains('in'))&&/Ange/.test($('deadRank').textContent)&&/Chérubin/.test($('deadRank').textContent);
+      r.sceau_du_record=!!document.querySelector('#deadScore .seal.in');
+      $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
+      D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');r.pas_de_sceau_sans_record=!document.querySelector('#deadScore .seal');
+      $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
+      // titre découpé en lettres, image de titre visible au menu seulement ; icône d'onglet et aperçu de lien présents
+      r.titre_en_lettres=document.querySelectorAll('#title .l').length===16&&$('title').getAttribute('aria-label')==='Guerre dans le Ciel'&&$('title').textContent.replace(/\s+/g,' ')==='Guerre dans le Ciel';
+      r.image_de_titre_au_menu=await until(()=>!$('art').classList.contains('off'),3);
+      r.icone_et_apercu=!!document.querySelector('link[rel=icon]')&&document.querySelector('meta[name=theme-color]').content==='#0a0e22'&&/keyart/.test(document.querySelector('meta[property="og:image"]').content);
+      // menu allégé : commandes (touches dessinées) et réglages rangés dans un volet fermé au départ
+      {const m=$('more'),v=e=>e.checkVisibility();r.menu_volet_ferme=!m.open&&!v($('volM'))&&v($('play'))&&!document.querySelector('#menu .panel > .keys');
+       m.open=true;r.menu_volet_ouvert=v($('volM'))&&v($('sens'))&&m.querySelectorAll('kbd').length>=8;m.open=false;}
+      // difficulté : une ligne dit ce qu'elle change ; une étoile marque celles déjà vaincues
+      const info=()=>document.querySelector('#menu .diffInfo').textContent,star=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').dataset.won==='1';
+      D.setDiff(0);const i0=info();D.setDiff(2);const i2=info();r.difficulte_expliquee=/Pèlerin/.test(i0)&&/adoucis/.test(i0)&&/Archange/.test(i2)&&/résistants/.test(i2);
+      r.pas_d_etoile_avant_victoire=!star(0)&&!star(1)&&!star(2);D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.win();
+      r.victoire_etoile=await until(()=>vis('won'),15)&&star(1)&&!star(2);$('wonMenu').click();r.victoire_vers_menu=D.state==='menu'&&vis('menu')&&!vis('won');return r;}));
+    await p.close();
+    // téléphone en portrait : invitation à le tourner, que l'on peut ignorer
+    {const {p:q,errs:e2}=await open(browser,{w:360,h:740,touch:true,play:false});const shown=()=>q.evaluate(()=>!document.getElementById('rotate').hidden);
+      ok.portrait_invitation=await shown();await q.setViewportSize({width:740,height:360});await q.waitForTimeout(400);ok.paysage_sans_invitation=!(await shown());
+      await q.setViewportSize({width:360,height:740});await q.waitForTimeout(400);const back=await shown();await q.evaluate(()=>document.getElementById('rotateSkip').click());ok.portrait_continuer_ainsi=back&&!(await shown());errs.push(...e2);await q.close();}
+    const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);
     const r=await p.evaluate(async()=>{const A=__dbg.AU,ac=__dbg.ac;if(!A)return {erreur:'audio non initialisé'};const an=ac.createAnalyser();an.fftSize=2048;A.master.connect(an);const b=new Float32Array(2048);let peak=0,sum=0,n=0;

@@ -1,4 +1,14 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Guerre dans le Ciel</title>
+<meta name="description" content="« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. » Un ange face à trois vagues de démons, puis au dragon à sept têtes.">
+<meta name="theme-color" content="#0a0e22">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e22'/%3E%3Cpath d='M12 46C14 26 28 13 54 12c-3 5-7 8-12 10 4 0 7 0 10-1-3 6-8 9-14 11 3 1 6 1 9 0-4 6-10 9-17 10 2 1 4 2 7 2-7 5-16 6-25 2z' fill='%23f3c552' stroke='%23f7edd3' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Guerre dans le Ciel">
+<meta property="og:description" content="« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. » Apocalypse 12:7">
+<meta property="og:image" content="keyart.webp">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
 <style>
@@ -10,7 +20,8 @@
   --font-body:'Spectral',Georgia,'Times New Roman',serif;
   color-scheme:dark;
 }
-html,body{height:100%}
+html,body{height:100%;margin:0}
+[hidden]{display:none!important}
 body{background:var(--night);color:var(--ivory);font-family:var(--font-body);font-size:16px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #stage{position:relative;height:100%;overflow:hidden;cursor:crosshair}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -19,10 +30,27 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 .label{font-family:var(--font-display);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .bar{width:min(42vw,230px);height:10px;border:1px solid var(--line);background:rgba(8,10,26,.45);margin-top:5px}
 .bar > i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--ivory),var(--gold));transition:width .15s linear}
+/* Lumière basse : barre braise qui pulse, liseré rouge au bord de l'écran ; la part regagnée s'affiche en plus clair */
+.bar{position:relative}
+#hpGain{position:absolute;top:0;bottom:0;background:#fffdf2;box-shadow:0 0 10px rgba(255,253,242,.9);opacity:0;transition:opacity .4s}
+#hpGain.on{opacity:.9}
+.bar.low{border-color:var(--ember);animation:hpPulse .55s ease-in-out infinite alternate}
+.bar.low > i{background:linear-gradient(90deg,#7a0f0a,var(--ember))}
+@keyframes hpPulse{from{box-shadow:0 0 4px rgba(229,72,44,.5)}to{box-shadow:0 0 16px 3px rgba(229,72,44,.95)}}
+#danger{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 max(90px,15vmin) max(20px,3.5vmin) rgba(190,20,10,.62);opacity:0;transition:opacity .5s}
+#danger.on{opacity:1;animation:dangerPulse 1.1s ease-in-out infinite alternate}
+@keyframes dangerPulse{from{opacity:.55}to{opacity:1}}
 #score{font-family:var(--font-display);font-weight:700;font-size:1.5rem;font-variant-numeric:tabular-nums;text-align:right;text-shadow:0 1px 8px rgba(0,0,0,.7)}
 #boss{align-self:center;text-align:center;width:min(86vw,560px)}
-#boss .bar{width:100%;height:12px;border-color:rgba(229,72,44,.7)}
-#boss .bar > i{background:linear-gradient(90deg,#7a0f0a,var(--ember))}
+/* les sept diadèmes : plein, fissuré selon les dégâts, brisé quand la tête tombe ; celui dont la gueule s'embrase brille */
+#crowns{display:flex;justify-content:center;gap:clamp(6px,1.6vw,14px);margin-top:7px}
+.crown{width:clamp(26px,5vw,38px);height:auto;overflow:visible;fill:var(--gold);stroke:#4a2c04;stroke-width:1.2;stroke-linejoin:round;filter:drop-shadow(0 1px 4px rgba(0,0,0,.75));transition:transform .2s,opacity .4s,fill .3s}
+.crown .c1,.crown .c2{fill:none;stroke:#3a1208;stroke-width:1.5;stroke-linecap:round;opacity:0}
+.crown.d1 .c1,.crown.d2 .c1,.crown.d2 .c2,.crown.dead .c1,.crown.dead .c2{opacity:1}
+.crown.d1{fill:#d6a23c}
+.crown.d2{fill:#b0742a}
+.crown.open{fill:#fff1c4;transform:scale(1.32);filter:drop-shadow(0 0 7px var(--ember)) drop-shadow(0 0 3px #fff)}
+.crown.dead{fill:rgba(8,10,26,.55);stroke:rgba(229,72,44,.6);transform:translateY(4px) rotate(14deg);opacity:.6;filter:none}
 #boss .label{color:var(--ember)}
 #banner{position:absolute;left:0;right:0;top:24%;text-align:center;padding-inline:max(16px,env(safe-area-inset-left,0px));opacity:0;transition:opacity .6s}
 #banner.on{opacity:1}
@@ -31,10 +59,29 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 #cross{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:1.5px solid rgba(247,237,211,.8);border-radius:50%;box-shadow:0 0 10px rgba(243,197,82,.6)}
 #cross::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:var(--gold);border-radius:50%}
 .arrow{position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--ember);filter:drop-shadow(0 0 6px rgba(229,72,44,.9))}
+.arrow.boss{width:30px;height:30px;border:0;background:var(--ember);clip-path:polygon(0 0,100% 50%,0 100%,32% 50%);filter:drop-shadow(0 0 2px var(--gold)) drop-shadow(0 0 8px rgba(229,72,44,.95))}
+/* boule de feu qui arrive hors champ : arc orange du côté d'où elle vient, plus vif à mesure qu'elle approche */
+.farc{position:absolute;width:46px;height:170px;margin:-85px 0 0 -23px;border-radius:50%;border-right:7px solid #ffa23a;filter:drop-shadow(0 0 12px rgba(255,130,30,.95));pointer-events:none}
 #hurt{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(190,20,10,.75) 100%);opacity:0}
-#hint{margin-top:6px;text-align:center;font-size:.92rem;text-shadow:0 1px 8px rgba(0,0,0,.85);transition:opacity 1s}
+#hint{margin-top:6px;align-self:center;text-align:center;font-size:1.05rem;padding:6px 18px;background:rgba(8,10,26,.5);border:1px solid var(--line);text-shadow:0 1px 8px rgba(0,0,0,.85);opacity:0;transition:opacity .35s}
+#hint.on{opacity:1}
+#hint b{font-family:var(--font-display);font-weight:700;letter-spacing:.08em;color:var(--gold)}
+#hint.urgent{border-color:var(--ember);box-shadow:0 0 18px rgba(229,72,44,.7);animation:hintPulse .5s ease-in-out infinite alternate}
+@keyframes hintPulse{to{transform:scale(1.07)}}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,var(--veil) 0%,rgba(8,10,26,.2) 75%);padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
-#menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%),url(keyart.webp) center/cover no-repeat var(--night)}
+#menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%)}
+/* image de titre : lent mouvement derrière le menu ; au départ elle se fond vers le ciel du jeu */
+#art{position:absolute;inset:0;overflow:hidden;background:var(--night);transition:opacity 1.5s ease,visibility 0s}
+#art.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 1.5s ease,visibility 0s 1.5s}
+#art i{position:absolute;inset:0;background:url(keyart.webp) center/cover no-repeat;animation:artDrift 44s ease-in-out infinite alternate}
+@keyframes artDrift{from{transform:scale(1.03)}to{transform:scale(1.13) translate(-1.6%,1.2%)}}
+/* le titre apparaît lettre à lettre dans un halo doré */
+h1 .w{display:inline-block;white-space:nowrap}
+#menu.intro h1 .l{display:inline-block;opacity:0;animation:letterIn .75s ease-out forwards;animation-delay:calc(.25s + var(--i) * 60ms)}
+@keyframes letterIn{from{opacity:0;transform:translateY(.22em) scale(1.3);filter:blur(7px);text-shadow:0 0 46px rgba(243,197,82,1),0 0 90px rgba(255,246,210,.9)}to{opacity:1}}
+#menu.intro .panel > :not(.eyebrow,h1){animation:screenIn 1s ease 1.4s both}
+.screen.fade{animation:screenIn 1s ease both}
+@keyframes screenIn{from{opacity:0}}
 .panel{margin-block:auto;max-width:36rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
 .eyebrow{font-family:var(--font-display);font-size:.78rem;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
 h1{font-family:var(--font-display);font-weight:900;font-size:clamp(2.1rem,8vw,4.4rem);line-height:1.02;letter-spacing:.06em;margin:0;text-wrap:balance;text-shadow:0 0 34px rgba(243,197,82,.55),0 3px 14px rgba(0,0,0,.6)}
@@ -42,6 +89,19 @@ h1{font-family:var(--font-display);font-weight:900;font-size:clamp(2.1rem,8vw,4.
 .verse cite{display:block;font-style:normal;font-family:var(--font-display);font-size:.72rem;letter-spacing:.22em;color:var(--gold);margin-top:.5em}
 .keys{display:grid;grid-template-columns:auto auto;gap:4px 18px;text-align:left;font-size:.95rem;margin:4px 0}
 .keys b{font-family:var(--font-display);font-weight:500;letter-spacing:.08em;color:var(--gold)}
+/* commandes dessinées comme des touches ; clavier ou tactile selon l'appareil */
+kbd{display:inline-block;min-width:1.55em;margin:0 1px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:3px;border-radius:5px;background:rgba(8,10,26,.6);font-family:var(--font-display);font-size:.78rem;font-weight:700;letter-spacing:.04em;color:var(--ivory);text-align:center}
+.keys{align-items:center}
+.cmds{display:contents}
+body:is(.touch,.coarse) .keys.kb,body:not(.touch,.coarse) .keys.tc{display:none}
+/* volet « Commandes et réglages » : le centre du menu ne garde que le titre, le verset, la difficulté et le départ */
+details.more{display:flex;flex-direction:column;align-items:center}
+details.more summary{list-style:none;cursor:pointer;font-family:var(--font-display);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ivory);padding:8px 16px;border:1px solid var(--line);background:rgba(8,10,26,.35)}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:" ▾";color:var(--gold)}
+details.more[open] summary::after{content:" ▴"}
+details.more summary:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
+details.more .inner{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:12px;padding:14px 18px;background:rgba(8,10,26,.62);border:1px solid var(--line)}
 button{font-family:var(--font-display);font-weight:700;font-size:1rem;letter-spacing:.2em;text-transform:uppercase;color:var(--night);background:linear-gradient(180deg,var(--ivory),var(--gold));border:0;padding:14px 30px;cursor:pointer;box-shadow:0 0 28px rgba(243,197,82,.55);pointer-events:auto}
 button:hover{filter:brightness(1.08)}
 button.ghost{background:transparent;color:var(--ivory);border:1px solid var(--line);box-shadow:none}
@@ -50,11 +110,20 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .final{font-family:var(--font-display);font-size:1.1rem;letter-spacing:.14em;font-variant-numeric:tabular-nums}
 #lock{position:absolute;width:50px;height:50px;margin:-25px 0 0 -25px;border:2px solid var(--gold);transform:rotate(45deg);box-shadow:0 0 12px rgba(243,197,82,.8),inset 0 0 8px rgba(243,197,82,.5);pointer-events:none}
 #lock.boss{border-color:var(--ember);box-shadow:0 0 14px rgba(229,72,44,.9)}
+#lock.open{border-color:var(--gold);border-width:3px;box-shadow:0 0 22px rgba(255,241,196,1),inset 0 0 10px rgba(243,197,82,.8)}
 #words{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .hitword{position:absolute;left:0;top:0;font-family:var(--font-display);font-weight:900;font-size:1.45rem;letter-spacing:.06em;color:var(--ivory);-webkit-text-stroke:1.5px #3a1208;paint-order:stroke fill;text-shadow:0 0 14px rgba(243,197,82,.85);white-space:nowrap;will-change:transform,opacity}
 .hitword.kill{font-size:2.2rem;color:var(--gold)}
+.hitword.feat{font-size:clamp(2.2rem,5.5vw,3.3rem);letter-spacing:.1em;color:#fffbe9;-webkit-text-stroke:2px #3a1208;text-shadow:0 0 26px rgba(243,197,82,1),0 0 8px rgba(255,255,255,.8)}
 .hitword.crit{font-size:1.85rem;color:#ffe2b8;text-shadow:0 0 16px rgba(229,72,44,.95)}
-#combo{font-family:var(--font-display);font-weight:700;color:var(--gold);text-align:right;font-size:1.05rem;min-height:1.3em;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+#combo{font-family:var(--font-display);font-weight:700;color:var(--gold);text-align:right;font-size:calc(1.05rem + var(--tier,0) * .13rem);min-height:1.3em;text-shadow:0 1px 8px rgba(0,0,0,.7);transform-origin:right center}
+#combo.bump{animation:comboBump .5s ease-out}
+@keyframes comboBump{0%{transform:scale(1.8);color:#fffbe9}100%{transform:scale(1)}}
+/* temps restant avant de perdre la série */
+#comboBar{margin:3px 0 0 auto;width:130px;height:3px;background:rgba(8,10,26,.5);opacity:0;transition:opacity .25s}
+#comboBar.on{opacity:1}
+#comboBar i{display:block;height:100%;margin-left:auto;background:var(--gold);box-shadow:0 0 6px rgba(243,197,82,.85)}
+.hitword.pts{font-size:1.15rem;color:#fffbe9;-webkit-text-stroke:1px #3a1208;text-shadow:0 0 10px rgba(243,197,82,.9)}
 #skills{display:flex;gap:14px;align-self:center;margin-top:auto}
 .skill{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--line);background:conic-gradient(rgba(243,197,82,.5) calc(var(--p,1) * 360deg),rgba(8,10,26,.55) 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .skill b{font-family:var(--font-display);font-size:1rem;line-height:1;color:var(--ivory)}
@@ -63,81 +132,137 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .vol{display:grid;grid-template-columns:auto min(46vw,180px);gap:6px 14px;align-items:center;font-size:.9rem}
 .vol label{font-family:var(--font-display);letter-spacing:.08em;color:var(--gold);text-align:left}
 .vol input{accent-color:var(--gold);width:100%}
+.vol input[type=checkbox]{width:18px;height:18px;justify-self:start;margin:0;cursor:pointer}
+/* invitation à tourner le téléphone : affichée en portrait sur écran tactile, et que l'on peut ignorer */
+#rotate{z-index:5;background:rgba(8,10,26,.94)}
+#rotate svg{width:84px;height:84px;fill:none;stroke:var(--gold);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#rotate h2{font-family:var(--font-display);font-weight:700;font-size:1.3rem;letter-spacing:.1em;margin:0;text-wrap:balance}
 #touch{position:absolute;inset:0;pointer-events:none}
 #joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:1.5px solid var(--line);background:rgba(8,10,26,.25);display:none}
 #joy i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(247,237,211,.55)}
 #tbtns{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,auto);gap:10px;pointer-events:auto}
-#tbtns button{padding:0;width:74px;height:74px;border-radius:50%;font-size:.62rem;letter-spacing:.1em}
+#tbtns button{position:relative;padding:0;width:74px;height:74px;border-radius:50%;font-size:.62rem;letter-spacing:.1em;display:grid;place-items:center}
+#tbtns svg{position:relative;width:42%;height:42%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+/* recharge dessinée sur le bouton : anneau doré qui se remplit, bouton sombre tant qu'il n'est pas prêt, éclat à la disponibilité */
+#tbtns .cd:not(.ready){background:conic-gradient(var(--gold) calc(var(--p,1) * 360deg),rgba(8,10,26,.6) 0);color:rgba(247,237,211,.55);box-shadow:none}
+#tbtns .cd:not(.ready)::before{content:"";position:absolute;inset:5px;border-radius:50%;background:rgba(8,10,26,.86)}
+#tbtns .cd.flash{animation:cdReady .5s ease-out}
+@keyframes cdReady{0%{transform:scale(1.22);box-shadow:0 0 0 0 rgba(243,197,82,.9),0 0 44px rgba(255,244,214,1)}100%{transform:scale(1);box-shadow:0 0 0 26px rgba(243,197,82,0),0 0 28px rgba(243,197,82,.55)}}
 #tbtns #tFire{width:92px;height:92px;grid-row:span 2;align-self:center}
 #tbtns #tP{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:44px;height:44px;font-size:.8rem}
-body.touch #hint{display:none}
+body.touch #hint{margin-top:auto;max-width:calc(100% - 420px);font-size:.95rem}
 body.touch #skills{display:none}
 .diff{display:flex;gap:6px}
 .diff button{padding:8px 12px;font-size:.72rem;letter-spacing:.14em;background:transparent;color:var(--ivory);border:1px solid var(--line);box-shadow:none}
 .diff button[aria-checked="true"]{background:linear-gradient(180deg,var(--ivory),var(--gold));color:var(--night);box-shadow:0 0 14px rgba(243,197,82,.5)}
+/* boutons secondaires des écrans de pause et de fin, sur une ligne */
+.btnrow{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.btnrow button{padding:10px 18px;font-size:.8rem;letter-spacing:.16em}
+.diff button[data-won]::after{content:" ★";color:var(--gold)}
+.diff button[data-won][aria-checked="true"]::after{color:#7a4a00}
+.diffInfo{font-style:italic;font-size:.95rem;max-width:30em;min-height:1.4em;text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.diffInfo b{font-family:var(--font-display);font-style:normal;font-weight:500;letter-spacing:.08em;color:var(--gold)}
 .best{font-family:var(--font-display);font-size:.8rem;letter-spacing:.16em;color:var(--gold);min-height:1em}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
-@media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}}
+/* décompte de fin : lignes révélées une à une, rang frappé comme un sceau, sceau doré pour un record */
+.stats > *{opacity:0;transition:opacity .25s}
+.stats > .in{opacity:1}
+.rank{opacity:0;transform:scale(1.7);transition:opacity .3s,transform .4s cubic-bezier(.2,1.5,.4,1)}
+.rank.in{opacity:1;transform:none}
+.rank span{display:block;font-family:var(--font-display);font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ivory)}
+.rank b{display:block;font-family:var(--font-display);font-weight:900;font-size:1.9rem;letter-spacing:.2em;color:var(--gold);text-shadow:0 0 22px rgba(243,197,82,.7),0 2px 8px rgba(0,0,0,.6)}
+.rank small{display:block;font-style:italic;font-size:.9rem;max-width:30em;text-wrap:balance}
+.seal{display:inline-grid;place-items:center;vertical-align:middle;width:62px;height:62px;margin-left:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6d2,var(--gold) 55%,#a86a00);border:2px dashed rgba(90,56,4,.7);color:#3a2204;font-size:.56rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:0;transform:rotate(-12deg) scale(2.2);transition:opacity .25s,transform .35s cubic-bezier(.2,1.5,.4,1)}
+.seal.in{opacity:1;transform:rotate(-12deg);animation:sealShine 1.4s ease-in-out .4s infinite alternate}
+@keyframes sealShine{from{box-shadow:0 0 10px rgba(243,197,82,.5)}to{box-shadow:0 0 30px 6px rgba(255,246,210,.95)}}
+@media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}details.more .inner{gap:8px;padding:10px 14px}}
+@media (prefers-reduced-motion:reduce){#menu.intro h1 .l{opacity:1}#art,#art.off{transition:none}#banner,.bar > i,#hint,.crown,.stats > *,.rank,.seal{transition:none}#hint.urgent,#combo.bump,.screen.fade,#art i,#menu.intro h1 .l,#menu.intro .panel > :not(.eyebrow,h1),.seal.in,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
   <canvas id="gl"></canvas>
   <div id="hurt"></div>
+  <div id="danger"></div>
   <div id="hud" hidden>
     <div class="row">
-      <div><div class="label">Lumière</div><div class="bar"><i id="hp"></i></div></div>
-      <div><div class="label" id="waveLabel">Vague I</div><div id="score">0</div><div id="combo"></div></div>
+      <div><div class="label">Lumière</div><div class="bar" id="hpBar"><i id="hp"></i><span id="hpGain"></span></div></div>
+      <div><div class="label" id="waveLabel">Vague I</div><div id="score">0</div><div id="combo"></div><div id="comboBar"><i></i></div></div>
     </div>
-    <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div class="bar"><i id="bossHp"></i></div></div>
+    <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div id="crowns" role="img" aria-label="Diadèmes du Dragon"></div></div>
     <div id="skills"><div class="skill" id="skJ"><b>F</b><span>Jugement</span></div><div class="skill" id="skE"><b>E</b><span>Esquive</span></div></div>
-    <div id="hint">Souris pour voler · clic ou Espace pour frapper · F ou clic droit : Jugement · E : esquive</div>
+    <div id="hint" role="status"></div>
   </div>
   <div id="cross" hidden></div>
   <div id="lock" hidden></div>
   <div id="touch" hidden>
     <div id="joy"><i></i></div>
-    <div id="tbtns"><button type="button" id="tFire">Frapper</button><button type="button" id="tJ">Jugement</button><button type="button" id="tE">Esquive</button><button type="button" id="tB">Élan</button><button type="button" id="tP" class="ghost">II</button></div>
+    <div id="tbtns">
+      <button type="button" id="tFire" aria-label="Frapper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 19 5M11 5h8v8M4 12l2 2M10 20l2-2"/></svg></button>
+      <button type="button" id="tJ" class="cd ready" aria-label="Jugement"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2 19 19M19 5l-2.8 2.8M7.8 16.2 5 19"/></svg></button>
+      <button type="button" id="tE" class="cd ready" aria-label="Esquive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 3v6h-6"/></svg></button>
+      <button type="button" id="tB" aria-label="Élan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l7-7 7 7M5 19l7-7 7 7"/></svg></button>
+      <button type="button" id="tP" class="ghost" aria-label="Pause">II</button></div>
   </div>
   <div id="words"></div>
   <div id="arrows"></div>
   <div id="banner"><h2 id="bTitle"></h2><p id="bSub"></p></div>
 
-  <div class="screen" id="menu">
+  <div id="art"><i></i></div>
+  <div class="screen intro" id="menu">
     <div class="panel">
       <div class="eyebrow">Apocalypse, chapitre 12</div>
-      <h1>Guerre dans le Ciel</h1>
+      <h1 id="title">Guerre dans le Ciel</h1>
       <p class="verse">« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. »<cite>Apocalypse 12:7</cite></p>
-      <div class="keys">
-        <b>Souris ou ZQSD</b><span>diriger le vol</span>
-        <b>Clic ou Espace</b><span>traits de lumière</span>
-        <b>F ou clic droit</b><span>Jugement, frappe de zone</span>
-        <b>E</b><span>esquive en tonneau</span>
-        <b>Maj</b><span>accélérer</span>
-        <b>M / N</b><span>couper le son / la musique</span>
-      </div>
       <div class="diff" role="radiogroup" aria-label="Difficulté"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
+      <div class="diffInfo"></div>
       <div class="best" id="best"></div>
-      <div class="vol"><label for="volM">Musique</label><input type="range" id="volM" min="0" max="100"><label for="volS">Effets</label><input type="range" id="volS" min="0" max="100"></div>
       <button id="play" type="button" disabled>Préparation du ciel…</button>
+      <details class="more" id="more"><summary>Commandes et réglages</summary><div class="inner">
+        <div class="cmds" id="cmds">
+        <div class="keys kb">
+          <b><kbd>Souris</kbd> ou <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd></b><span>diriger le vol</span>
+          <b><kbd>Clic</kbd> ou <kbd>Espace</kbd></b><span>traits de lumière</span>
+          <b><kbd>F</kbd> ou <kbd>Clic droit</kbd></b><span>Jugement, frappe de zone</span>
+          <b><kbd>E</kbd></b><span>esquive en tonneau</span>
+          <b><kbd>Maj</kbd></b><span>accélérer</span>
+          <b><kbd>Échap</kbd></b><span>pause</span>
+          <b><kbd>M</kbd> / <kbd>N</kbd></b><span>couper le son / la musique</span>
+        </div>
+        <div class="keys tc">
+          <b>Pouce gauche</b><span>joystick : diriger le vol</span>
+          <b>Grand bouton</b><span>traits de lumière (maintenir)</span>
+          <b>Soleil</b><span>Jugement, frappe de zone</span>
+          <b>Flèche ronde</b><span>esquive en tonneau</span>
+          <b>Chevrons</b><span>accélérer (maintenir)</span>
+        </div>
+        </div>
+        <div class="vol"><label for="volM">Musique</label><input type="range" id="volM" min="0" max="100"><label for="volS">Effets</label><input type="range" id="volS" min="0" max="100">
+        <label for="sens">Sensibilité</label><input type="range" id="sens" class="sens" min="50" max="150" step="5"><label for="invY">Inverser haut/bas</label><input type="checkbox" id="invY" class="invY"></div>
+        <div class="btnrow"><button type="button" class="ghost fs" hidden>Plein écran</button></div>
+      </div></details>
     </div>
   </div>
   <div class="screen" id="pause" hidden>
     <div class="panel">
       <div class="eyebrow">Pause</div>
       <h1>Le ciel retient son souffle</h1>
-      <div class="vol"><label for="volM2">Musique</label><input type="range" id="volM2" min="0" max="100"><label for="volS2">Effets</label><input type="range" id="volS2" min="0" max="100"></div>
+      <div class="vol"><label for="volM2">Musique</label><input type="range" id="volM2" min="0" max="100"><label for="volS2">Effets</label><input type="range" id="volS2" min="0" max="100">
+        <label for="sens2">Sensibilité</label><input type="range" id="sens2" class="sens" min="50" max="150" step="5"><label for="invY2">Inverser haut/bas</label><input type="checkbox" id="invY2" class="invY"></div>
+      <div class="cmds" id="pauseKeys"></div>
       <button id="resume" type="button">Reprendre</button>
-      <button id="restart" type="button" class="ghost">Recommencer</button>
+      <div class="btnrow"><button id="restart" type="button" class="ghost">Recommencer</button><button id="pauseMenu" type="button" class="ghost">Menu</button><button type="button" class="ghost fs" hidden>Plein écran</button></div>
     </div>
   </div>
   <div class="screen" id="dead" hidden>
     <div class="panel">
       <div class="eyebrow">La lumière vacille</div>
       <h1>L'ange est tombé</h1>
-      <div class="final" id="deadScore"></div><div class="stats" id="deadStats"></div>
+      <div class="final" id="deadScore"></div><div class="stats" id="deadStats"></div><div class="rank" id="deadRank"></div>
+      <div class="diff" role="radiogroup" aria-label="Difficulté de la prochaine tentative"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
+      <div class="diffInfo"></div>
       <button id="retry" type="button">Reprendre le combat</button>
+      <div class="btnrow"><button id="easier" type="button" class="ghost"></button><button id="deadMenu" type="button" class="ghost">Menu</button></div>
     </div>
   </div>
   <div class="screen" id="won" hidden>
@@ -145,8 +270,17 @@ body.touch #skills{display:none}
       <div class="eyebrow">Victoire</div>
       <h1>Le Dragon est précipité</h1>
       <p class="verse">« Et il fut précipité, le grand dragon, le serpent ancien, appelé le diable et Satan, celui qui séduit toute la terre. »<cite>Apocalypse 12:9</cite></p>
-      <div class="final" id="wonScore"></div><div class="stats" id="wonStats"></div>
+      <div class="final" id="wonScore"></div><div class="stats" id="wonStats"></div><div class="rank" id="wonRank"></div>
       <button id="again" type="button">Rejouer</button>
+      <div class="btnrow"><button id="wonMenu" type="button" class="ghost">Menu</button></div>
+    </div>
+  </div>
+  <div class="screen" id="rotate" hidden>
+    <div class="panel">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="20" width="36" height="20" rx="3"/><path d="M12 14a14 14 0 0 1 14-9M26 5l-5-3M26 5l-4 5"/><rect x="30" y="6" width="12" height="9" rx="2" stroke-dasharray="2 3" opacity=".6"/></svg>
+      <h2>Tournez votre téléphone</h2>
+      <p class="verse">Le ciel se parcourt en paysage : l'horizon et les commandes y tiennent mieux.</p>
+      <button id="rotateSkip" type="button" class="ghost">Continuer ainsi</button>
     </div>
   </div>
 </div>
@@ -675,13 +809,13 @@ function initAudio(){
   const len=ac.sampleRate*3.4|0,ir=ac.createBuffer(2,len,ac.sampleRate); // réverbération de cathédrale générée
   for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
   const rev=ac.createConvolver();rev.buffer=ir;const revG=ac.createGain();revG.gain.value=.5;rev.connect(revG).connect(master);
-  const MUSIC_GAIN=2.2;const music=ac.createGain();music.gain.value=musicOn?VOL.music*MUSIC_GAIN:0;AU_MG=MUSIC_GAIN;music.connect(master);const mr=ac.createGain();mr.gain.value=.55;music.connect(mr).connect(rev);
+  const MUSIC_GAIN=2.2;const music=ac.createGain();music.gain.value=musicOn?VOL.music*MUSIC_GAIN:0;AU_MG=MUSIC_GAIN;const mlp=ac.createBiquadFilter();mlp.type='lowpass';mlp.frequency.value=20000;mlp.Q.value=.5;music.connect(mlp).connect(master);const mr=ac.createGain();mr.gain.value=.55;mlp.connect(mr).connect(rev); // le filtre assourdit la musique quand la Lumière est basse
   const fx=ac.createGain();fx.gain.value=VOL.sfx;fx.connect(master);const fr=ac.createGain();fr.gain.value=.22;fx.connect(fr).connect(rev);
   const nb=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
   const wind=ac.createBufferSource();wind.buffer=nb;wind.loop=true;const wf=ac.createBiquadFilter();wf.type='bandpass';wf.frequency.value=500;wf.Q.value=.6;
   const wg=ac.createGain();wg.gain.value=0;wind.connect(wf).connect(wg).connect(fx);wind.start();
   const th={};for(const k of ['menu','sky','fire'])(th[k]=ac.createGain()).connect(music),th[k].gain.value=0;
-  AU={master,music,fx,rev,nb,wf,wg,th,theme:null,next:ac.currentTime+.1,step:0,intensity:0};
+  AU={master,music,mlp,fx,rev,nb,wf,wg,th,theme:null,next:ac.currentTime+.1,step:0,intensity:0};
   setInterval(schedule,25);
 }
 function setVolumes(){if(!AU)return;AU.master.gain.setTargetAtTime(muted?0:1,ac.currentTime,.05);AU.music.gain.setTargetAtTime(musicOn?VOL.music*AU_MG:0,ac.currentTime,.1);AU.fx.gain.setTargetAtTime(VOL.sfx,ac.currentTime,.05);
@@ -735,7 +869,8 @@ function setTheme(k){if(!AU||AU.theme===k)return;const now=ac.currentTime;
 function audioUpdate(){if(!AU)return;
   setTheme(state==='play'?(phase==='boss'||phase==='bossintro'||phase==='bossdying'?'fire':'sky'):'menu');
   AU.intensity=state==='play'?(demons.length||dragon.alive?1:.3):0;
-  const sp=clamp((P.speed-112)/83,0,1),now=ac.currentTime;
+  const sp=clamp((P.speed-112)/83,0,1),now=ac.currentTime,low=lowLight();
+  AU.mlp.frequency.setTargetAtTime(low?1100:20000,now,.25);if(low&&!paused&&time>=heartT){heartT=time+.95;sfx.heart();} // Lumière basse : musique assourdie et battement de cœur
   AU.wg.gain.setTargetAtTime(state==='play'?.035+sp*.07+(P.dodgeT>0?.06:0):.008,now,.2);AU.wf.frequency.setTargetAtTime(380+sp*900+(P.dodgeT>0?600:0),now,.2);}
 /* --- effets --- */
 function tone(f0,f1,dur,type,vol){if(!AU)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type=type;
@@ -753,6 +888,10 @@ const sfx={
     const lfo=ac.createOscillator();lfo.frequency.value=23;const lg=ac.createGain();lg.gain.value=10;lfo.connect(lg).connect(o.frequency);
     const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=750;const og=ac.createGain();og.gain.setValueAtTime(0,t);og.gain.linearRampToValueAtTime(.24,t+.2);og.gain.setTargetAtTime(0,t+1.3,.3);
     o.connect(lp).connect(og).connect(AU.fx);o.start(t);lfo.start(t);o.stop(t+2.8);lfo.stop(t+2.8);}),
+  heart:S(t=>{vDrum(t,AU.fx,.2,46);vDrum(t+.2,AU.fx,.13,42);}),
+  tick:S((t,i)=>vBell(79+i*2,t,AU.fx,.04)),
+  rank:S((t,rec)=>{for(const m of [62,69,74])vChoir(m,t,.9,AU.fx,.03);vBell(86,t,AU.fx,.06);if(rec){vBell(90,t+.12,AU.fx,.05);vBell(93,t+.24,AU.fx,.05);}}),
+  tier:S((t,n)=>{vBell(74+n*3,t,AU.fx,.06);vBell(81+n*3,t+.07,AU.fx,.045);}),
   hurt:S(t=>{vNoise(t,.28,'lowpass',1000,140,1,.2,AU.fx);tone(210,70,.3,'square',.05);}),
   fire:S((t,p)=>{const v=distVol(p);vNoise(t,.5,'lowpass',2400,280,.8,.09*v,AU.fx);tone(160,70,.35,'sawtooth',.025*v);}),
   whoosh:S(t=>vNoise(t,.38,'bandpass',380,2600,1.6,.16,AU.fx)),
@@ -773,6 +912,15 @@ addEventListener('pointerup',e=>{if(!touchMode&&e.button!==2)firing=false;});
 stage.addEventListener('pointerleave',()=>{mx=0;my=0;});
 stage.addEventListener('contextmenu',e=>e.preventDefault());
 let paused=false,touchMode=false;
+/* ---------- réglages de pilotage (mémorisés comme les volumes) ---------- */
+const SET={sens:1,invY:false};try{const v=JSON.parse(localStorage.getItem('gdc-set')||'null');if(v){SET.sens=clamp(+v.sens||1,.5,1.5);SET.invY=!!v.invY;}}catch(e){}
+function syncSettings(){document.querySelectorAll('.sens').forEach(e=>e.value=Math.round(SET.sens*100));document.querySelectorAll('.invY').forEach(e=>e.checked=SET.invY);
+  try{localStorage.setItem('gdc-set',JSON.stringify(SET));}catch(e){}}
+document.querySelectorAll('.sens').forEach(e=>e.oninput=()=>{SET.sens=e.value/100;syncSettings();});document.querySelectorAll('.invY').forEach(e=>e.onchange=()=>{SET.invY=e.checked;syncSettings();});syncSettings();
+// plein écran : le bouton n'apparaît que si le navigateur le permet
+{const root=document.documentElement,btns=document.querySelectorAll('.fs'),can=!!(document.fullscreenEnabled&&root.requestFullscreen);
+  const label=()=>btns.forEach(b=>{b.hidden=!can;b.textContent=document.fullscreenElement?'Quitter le plein écran':'Plein écran';});
+  btns.forEach(b=>b.onclick=()=>{const q=document.fullscreenElement?document.exitFullscreen():root.requestFullscreen();if(q&&q.catch)q.catch(()=>{});});document.addEventListener('fullscreenchange',label);label();}
 /* ---------- commandes tactiles : joystick à gauche, boutons à droite ---------- */
 function enableTouch(){if(touchMode)return;touchMode=true;document.body.classList.add('touch');$('touch').hidden=false;cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.3));resize();}
@@ -796,35 +944,82 @@ const P={pos:new V(0,320,0),yaw:0,pitch:0,speed:110,hp:100,sinceHit:9,fireT:0,ro
 const fwd=new V(0,0,-1),tmp=new V(),tmp2=new V(),tmp3=new V();
 let state='menu',score=0,wave=0,pending=null,phase='idle',time=0,shake=0,hurt=0,bannerT=0;
 const ROMAN=['I','II','III'];let stopT=0,combo=0,comboT=0,lockT=null,reinf=0;
-const J_COOL=6,DODGE_T=.45,DODGE_COOL=1.6;
+const J_COOL=6,DODGE_T=.45,DODGE_COOL=1.6,LOW_HP=30;let heartT=0;
+/* chute de l'ange : temps ralenti une seconde, plumes de lumière, caméra qui s'éloigne, puis le panneau monte en fondu */
+const DEATH_PANEL=reduced?.6:2.8;let deadT=0;
+const lowLight=()=>state==='play'&&P.hp>0&&P.hp<LOW_HP;
 /* ---------- mots d'impact ---------- */
 const words=[];for(let i=0;i<14;i++){const el=document.createElement('div');el.className='hitword';el.hidden=true;$('words').appendChild(el);words.push({el,pos:new V(),t0:-9,on:false});}
 function word(text,pos,cls=''){const w=words.find(w=>!w.on)||words[0];w.on=true;w.t0=time;w.pos.copy(pos);w.el.textContent=text;w.el.className='hitword'+(cls?' '+cls:'');w.el.hidden=false;w.dx=rand(-40,40);w.dy=-(words.filter(o=>o.on&&time-o.t0<.4).length-1)*30;}
 const mult=()=>1+Math.min(4,Math.floor(combo/5))*.5;
-function registerHit(){combo++;comboT=2.4;RUN.maxCombo=Math.max(RUN.maxCombo,combo);}
+const COMBO_T=2.4,fmtN=n=>Math.round(n).toLocaleString('fr-FR'); // « 12 400 »
+function registerHit(){const m0=mult();combo++;comboT=COMBO_T;RUN.maxCombo=Math.max(RUN.maxCombo,combo);
+  if(mult()>m0){const el=$('combo'),tier=Math.round((mult()-1)*2);el.style.setProperty('--tier',tier);el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');sfx.tier(tier);}} // palier de multiplicateur : le chiffre grossit, une note monte
+// points gagnés, affichés près de l'ennemi abattu
+function gain(pts,pos){score+=pts;word('+'+fmtN(pts),pos,'pts');}
+/* ---------- invites contextuelles : une commande à la fois, au moment où elle sert, effacée dès le geste réussi ---------- */
+const TUT={done:{},hold:null,shown:''};
+const TUT_TXT={aim:['<b>Souris</b> ou <b>ZQSD</b> : visez un démon','<b>Joystick</b> : visez un démon'],fire:['<b>Clic</b> ou <b>Espace</b> : frappez !','Maintenez <b>Frapper</b>'],
+  dodge:['<b>E</b> : esquivez !','<b>Esquive</b> : évitez la boule de feu !'],judge:['<b>F</b> ou <b>clic droit</b> : Jugement !','<b>Jugement</b> : frappez le groupe !']};
+const learn=k=>{TUT.done[k]=true;};
+function holdHint(html,d){TUT.hold={html,until:time+d};}
+function tutStep(){const d=TUT.done;
+  if(!d.dodge&&P.dodgeCool<=0)for(const f of fires){if(f.life<=0)continue;tmp.copy(P.pos).sub(f.m.position);if(tmp.lengthSq()<260*260&&tmp.dot(f.v)>0)return 'dodge';} // une boule de feu approche
+  if(!d.judge&&P.jCool<=0&&!J.on&&lockT){if(lockT.boss||wave>1)return 'judge';let n=0;for(const o of demons)if(o.g.position.distanceToSquared(lockT.pos)<200*200)n++;if(n>=3)return 'judge';} // trois démons groupés
+  if(!d.aim){if(lockT)learn('aim');else if(demons.length)return 'aim';}
+  if(!d.fire&&lockT)return 'fire';
+  return null;}
+function updateHint(){let k=null,html='';
+  if(state==='play'){k=tutStep();if(k!=='dodge'&&TUT.hold&&time<TUT.hold.until){k=null;html=TUT.hold.html;}else if(k)html=TUT_TXT[k][touchMode?1:0];}
+  if(html===TUT.shown)return;TUT.shown=html;const el=$('hint');if(html)el.innerHTML=html;el.classList.toggle('on',!!html);el.classList.toggle('urgent',k==='dodge');}
 /* ---------- difficulté, statistiques et record ---------- */
-const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75},{n:'Gardien',dmg:1,rate:1,hp:1},{n:'Archange',dmg:1.4,rate:.75,hp:1.3}];
+const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75,info:'coups adoucis, tirs ennemis plus rares, têtes moins résistantes. Pour découvrir.'},{n:'Gardien',dmg:1,rate:1,hp:1,info:'l’épreuve de référence.'},
+  {n:'Archange',dmg:1.4,rate:.75,hp:1.3,info:'coups plus durs, ennemis plus vifs, démons et têtes plus résistants.'}];
 let diffI=1;try{diffI=+(localStorage.getItem('gdc-diff')??1);if(!(diffI>=0&&diffI<=2))diffI=1;}catch(e){}
 const DF=()=>DIFF[diffI],headHp=()=>Math.round(HEAD_HP*DF().hp);
 const RUN={t0:0,maxCombo:0,kills:0,hurt:0};
+// difficultés déjà vaincues : marquées d'une étoile dans le sélecteur
+function getWon(){try{return JSON.parse(localStorage.getItem('gdc-won')||'{}')||{};}catch(e){return {};}}
+function markWon(){const w=getWon();w[diffI]=1;try{localStorage.setItem('gdc-won',JSON.stringify(w));}catch(e){}}
 function getBest(){try{return JSON.parse(localStorage.getItem('gdc-best')||'{}');}catch(e){return {};}}
 function showBest(){const b=getBest()[diffI];$('best').textContent=b?('Record '+DF().n+' : '+b.toLocaleString('fr-FR')):'';}
 function fmtT(s){s=Math.round(s);return Math.floor(s/60)+' min '+String(s%60).padStart(2,'0')+' s';}
-function endStats(id,won){$('banner').classList.remove('on');bannerT=0;$('lock').hidden=true;const t=time-RUN.t0,b=getBest(),prev=b[diffI]||0,rec=score>prev;if(rec){b[diffI]=score;try{localStorage.setItem('gdc-best',JSON.stringify(b));}catch(e){}}
-  $(id).innerHTML='<b>Difficulté</b><span>'+DF().n+'</span><b>Durée</b><span>'+fmtT(t)+'</span><b>Combo max</b><span>×'+RUN.maxCombo+'</span><b>Démons terrassés</b><span>'+RUN.kills+'</span>'
-    +(won?'':'<b>Têtes abattues</b><span>'+(dragon.heads.filter(h=>!h.alive).length)+' / 7</span>')+'<b>Record</b><span>'+(rec?'nouveau record !':Math.max(prev,score).toLocaleString('fr-FR'))+'</span>';showBest();}
-function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}document.querySelectorAll('.diff button').forEach(b=>b.setAttribute('aria-checked',String(+b.dataset.d===i)));showBest();}
-function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);score+=Math.round(100*mult());stopT=.07;word('TERRASSÉ !',d.g.position,'kill');}
+// rang de fin de partie : selon l'issue, le score et la Lumière perdue
+const RANKS=['Ange','Chérubin','Séraphin'],RANK_SCORE=[25000,50000],RANK_HURT=60;
+function rankOf(won,sc,lost){return won&&sc>=RANK_SCORE[1]&&lost<=RANK_HURT?2:(won||sc>=RANK_SCORE[0])?1:0;}
+const rankNext=r=>r===2?'Le plus haut rang.':r===1?'Séraphin : vaincre le Dragon avec '+fmtN(RANK_SCORE[1])+' points en perdant au plus '+RANK_HURT+' de Lumière.':'Chérubin : vaincre le Dragon, ou atteindre '+fmtN(RANK_SCORE[0])+' points.';
+let END=null;
+function endStats(k,won){$('banner').classList.remove('on');bannerT=0;$('lock').hidden=true;const t=time-RUN.t0,b=getBest(),prev=b[diffI]||0,rec=score>prev;if(rec){b[diffI]=score;try{localStorage.setItem('gdc-best',JSON.stringify(b));}catch(e){}}
+  $(k+'Score').innerHTML='Score <span class="num">0</span>'+(rec?'<span class="seal">Record</span>':'');
+  $(k+'Stats').innerHTML='<b>Difficulté</b><span>'+DF().n+'</span><b>Durée</b><span>'+fmtT(t)+'</span><b>Combo max</b><span>×'+RUN.maxCombo+'</span><b>Démons terrassés</b><span>'+RUN.kills+'</span>'
+    +(won?'':'<b>Têtes abattues</b><span>'+(dragon.heads.filter(h=>!h.alive).length)+' / 7</span>')+'<b>Record</b><span>'+(rec?'nouveau record !':fmtN(Math.max(prev,score)))+'</span>';
+  const r=rankOf(won,score,RUN.hurt),rk=$(k+'Rank');rk.className='rank';rk.innerHTML='<span>Rang</span><b>'+RANKS[r]+'</b><small>'+rankNext(r)+'</small>';
+  END={k,score,t:-1,step:-1,rows:[...$(k+'Stats').children],done:false};showBest();}
+// décompte : le score défile, les lignes se révèlent une à une avec un tintement, puis le rang et le sceau du record
+function updateEnd(real){const E=END;if(!E||E.done||$(E.k).hidden)return;if(E.t<0)E.t=0;else E.t+=real;if(reduced)E.t=99;
+  const num=$(E.k+'Score').querySelector('.num'),u=clamp(E.t/1.1,0,1);num.textContent=fmtN(E.score*(1-Math.pow(1-u,3)));
+  const n=E.rows.length/2,step=Math.min(n,Math.floor((E.t-.7)/.17));
+  while(E.step<step){E.step++;if(E.step<n){E.rows[E.step*2].classList.add('in');E.rows[E.step*2+1].classList.add('in');if(!reduced)sfx.tick(E.step);}}
+  if(E.t>.7+n*.17+.3){E.done=true;$(E.k+'Rank').classList.add('in');const seal=$(E.k+'Score').querySelector('.seal');if(seal)seal.classList.add('in');if(!reduced)sfx.rank(!!seal);}}
+function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}const won=getWon();document.querySelectorAll('.diff button').forEach(b=>{const d=+b.dataset.d;b.setAttribute('aria-checked',String(d===i));if(won[d]){b.dataset.won='1';b.title=DIFF[d].n+' : déjà vaincue';}});
+  document.querySelectorAll('.diffInfo').forEach(e=>e.innerHTML='<b>'+DF().n+'</b> : '+DF().info);showBest();
+  const e=$('easier');e.hidden=i===0;if(i>0)e.textContent='Essayer en '+DIFF[i-1].n;} // sur l'écran de défaite : proposer la difficulté juste en dessous
+// mots d'impact : variés pour un démon abattu, plus grands pour un exploit (dernier démon d'une vague, doublé ou triplé d'un seul Jugement)
+const KILL_WORDS=['TERRASSÉ !','PRÉCIPITÉ !','FOUDROYÉ !'],MULTI_WORDS=['DOUBLÉ !','TRIPLÉ !'];
+function killWord(byJudge,lastOfWave,rnd=Math.random()){if(lastOfWave)return ['VAGUE PURIFIÉE !','feat'];return [byJudge?'JUGÉ !':KILL_WORDS[Math.min(KILL_WORDS.length-1,Math.floor(rnd*KILL_WORDS.length))],'kill'];}
+const multiWord=n=>n<2?null:MULTI_WORDS[n-2]||'LÉGION BALAYÉE !';
+function killDemon(i,byJudge){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);stopT=.07;{const [w,c]=killWord(byJudge,phase==='fight'&&!demons.length&&!reinf&&!pending);word(w,d.g.position,c);}gain(Math.round(100*mult()),d.g.position);}
 /* ---------- Jugement : orbe de lumière qui suit la cible et explose ---------- */
 const J={g:new THREE.Group(),v:new V(),life:0,on:false};
 J.g.add(new THREE.Mesh(new THREE.SphereGeometry(5,16,12),new THREE.MeshBasicMaterial({color:new THREE.Color(8,6,2.5),fog:false})));J.g.add(glow(0xffe08a,70,.9));J.g.visible=false;scene.add(J.g);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1,.05,8,64),new THREE.MeshBasicMaterial({color:new THREE.Color(6,4.5,1.6),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));ring.visible=false;scene.add(ring);let ringT=0;
-function tryJudgement(){if(state!=='play'||P.jCool>0||J.on)return;P.jCool=J_COOL;J.on=true;J.life=0;J.g.visible=true;J.g.position.copy(P.pos).addScaledVector(fwd,12);
+function tryJudgement(){if(state!=='play'||P.jCool>0||J.on)return;learn('judge');P.jCool=J_COOL;J.on=true;J.life=0;J.g.visible=true;J.g.position.copy(P.pos).addScaledVector(fwd,12);
   const dir=tmp2.copy(fwd);if(lockT){dir.copy(lockT.pos).sub(P.pos).normalize();}J.v.copy(dir).multiplyScalar(430).addScaledVector(P.vel,.5);
   sfx.judge();}
 function explodeJ(){const p=J.g.position;J.on=false;J.g.visible=false;
   burst(p,9,7,3,150,260,1.4);burst(p,8,5,1.5,80,120,2);ring.visible=true;ring.position.copy(p);ringT=0;shake=reduced?0:.45;stopT=.09;sfx.judgeBoom();
-  for(let i=demons.length-1;i>=0;i--)if(demons[i].g.position.distanceTo(p)<120){registerHit();killDemon(i);}
+  let nk=0;for(let i=demons.length-1;i>=0;i--)if(demons[i].g.position.distanceTo(p)<120){registerHit();killDemon(i,true);nk++;}
+  if(multiWord(nk))word(multiWord(nk),p,'feat');
   for(const f of fires)if(f.life>0&&f.m.position.distanceTo(p)<170){f.life=0;f.m.visible=false;}
   if(dragon.alive&&dragon.dying<0){let any=false;for(const h of dragon.heads)if(h.alive&&h.g.position.distanceTo(p)<150){any=true;hitHead(h,16,h.g.position,true);}
     if(any)word('JUGEMENT !',p,'crit');}}
@@ -836,7 +1031,7 @@ function updateJudgement(dt){
   if(J.life>2.6||J.g.position.y<heightAt(J.g.position.x,J.g.position.z)+10)explodeJ();
 }
 /* ---------- esquive en tonneau ---------- */
-function tryDodge(){if(state!=='play'||P.dodgeCool>0)return;P.dodgeT=DODGE_T;P.dodgeCool=DODGE_COOL;P.dodgeDir=(keys.KeyA||keys.ArrowLeft||mx<-.15)?-1:1;sfx.whoosh();}
+function tryDodge(){if(state!=='play'||P.dodgeCool>0)return;learn('dodge');P.dodgeT=DODGE_T;P.dodgeCool=DODGE_COOL;P.dodgeDir=(keys.KeyA||keys.ArrowLeft||mx<-.15)?-1:1;sfx.whoosh();}
 /* ---------- verrouillage de cible ---------- */
 function updateLock(){
   if(state!=='play'){lockT=null;return;}
@@ -848,13 +1043,18 @@ function updateLock(){
 }
 const hF=new V(),hR=new V(),hU=new V(),hT=new V(),hP0=new V(),hP1=new V(),hW=new V(),lookO=new THREE.Object3D();
 const headsLeft=()=>dragon.heads.filter(h=>h.alive).length;
+const headOpen=h=>h.alive&&(h.cool<1.1||h.lunge>.05); // gueule embrasée : seul moment où le diadème ne protège plus la tête
+// un diadème par tête dans le bandeau du Dragon
+const crownEls=dragon.heads.map(()=>{const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 28 22');sv.setAttribute('class','crown');
+  sv.innerHTML='<path d="M3 20H25L27 5 20 12 14 2 8 12 1 5Z"/><path class="c1" d="M14 2l-2 6 3 4-2 8"/><path class="c2" d="M8 12l2 3-2 5M20 12l-1.5 4 2 4"/>';$('crowns').appendChild(sv);return sv;});
+function updateCrowns(){const max=headHp();dragon.heads.forEach((h,i)=>{const c=crownEls[i].classList,f=h.hp/max;c.toggle('dead',!h.alive);c.toggle('d1',h.alive&&f<.66&&f>=.33);c.toggle('d2',h.alive&&f<.33);c.toggle('open',dragon.dying<0&&headOpen(h));});}
 function bossLabel(){const n=headsLeft();$('bossLabel').textContent='Le Dragon, le serpent ancien · '+n+(n>1?' têtes':' tête');}
 function hitHead(h,dmg,p,crit){if(!h.alive)return;h.hp-=dmg;h.flash=1;registerHit();burst(p,9,6,2,crit?24:10,100,.6);sfx.hit();score+=Math.round(dmg*12*mult());
   if(time-h.wordT>.6){word(crit?'GUEULE OUVERTE !':'DIADÈME',p,crit?'crit':'');h.wordT=time;}if(h.hp<=0)killHead(h);}
 function killHead(h){h.alive=false;h.hp=0;h.g.visible=false;burst(h.g.position,9,3,.6,160,200,1.8);burst(h.g.position,8,6,2,60,90,1.2);
   for(const n of h.neck){burst(n.g.position,8,2,.4,14,80,1);n.g.visible=false;}
-  sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;score+=Math.round(600*mult());const n=headsLeft();bossLabel();
-  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'kill');
+  sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;const n=headsLeft();bossLabel();
+  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'feat');gain(Math.round(600*mult()),h.g.position);
   if(!n){dragon.hp=0;checkDragonDown();}}
 function updateHeads(dt,rage){
   const J0=dragon.head.position;hF.copy(dragon.v);if(hF.lengthSq()<1)hF.set(0,0,1);hF.normalize();hR.crossVectors(hF,UP).normalize();hU.crossVectors(hR,hF).normalize();
@@ -890,12 +1090,15 @@ function checkDragonDown(){if(dragon.hp<=0&&dragon.dying<0){dragon.hp=0;dragon.d
 function banner(t,s,d=3.2){$('bTitle').textContent=t;$('bSub').textContent=s||'';$('banner').classList.add('on');bannerT=d;}
 function clearField(){for(const d of demons)scene.remove(d.g);demons.length=0;for(const f of fires){f.life=0;f.m.visible=false;}for(const b of bolts){b.life=0;b.m.visible=false;}
   dragon.alive=false;dragon.dying=-1;dragon.root.visible=false;$('boss').hidden=true;}
-function startGame(){RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
+function startGame(){deadT=0;if(state==='menu'&&!reduced){camPos.copy(P.pos).addScaledVector(fwd,-260);camPos.y+=130;camIn=2;} // depuis le menu : la caméra part de loin et rejoint l'ange pendant que l'image se fond
+  RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
   initAudio();
   clearField();P.pos.set(0,320,0);P.yaw=0;P.pitch=0;P.hp=100;P.sinceHit=9;P.jCool=0;P.dodgeT=0;P.dodgeCool=0;combo=0;comboT=0;lockT=null;J.on=false;J.g.visible=false;score=0;wave=0;moodTarget=0;state='play';
-  $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;$('hint').style.opacity=1;
-  setTimeout(()=>{$('hint').style.opacity=0;},7000);nextWave();
+  $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;TUT.hold=null;nextWave();
 }
+// retour à l'écran titre depuis la pause ou un écran de fin : l'ange reprend son vol libre derrière le menu
+function toMenu(){if(paused)togglePause(false);clearField();state='menu';phase='idle';pending=null;moodTarget=0;lockT=null;J.on=false;J.g.visible=false;P.hp=100;P.sinceHit=9;firing=false;
+  $('banner').classList.remove('on');bannerT=0;$('hud').hidden=$('cross').hidden=$('lock').hidden=$('dead').hidden=$('won').hidden=$('pause').hidden=true;$('menu').hidden=false;showBest();}
 function nextWave(){wave++;
   if(wave<=3){$('waveLabel').textContent='Vague '+ROMAN[wave-1];banner('Vague '+ROMAN[wave-1],['Les anges déchus approchent.','Ils reviennent plus nombreux.','La dernière légion.'][wave-1]);pending={t:2.6,n:[5,7,9][wave-1]};reinf=[3,6,8][wave-1];phase='fight';sfx.wave();}
   else{phase='bossintro';pending={t:5.5,n:0};moodTarget=1;$('waveLabel').textContent='Le Dragon';sfx.roar();
@@ -907,16 +1110,25 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   dragon.segs.forEach((s,i)=>{s.g.visible=true;s.g.position.copy(dragon.head.position);s.g.position.y-=(i+1)*SPACING;});
   for(const h of dragon.heads){h.alive=true;h.hp=headHp();h.g.visible=true;h.snap=true;h.cool=rand(3,6);h.flash=0;for(const n of h.neck){n.g.visible=true;n.g.position.copy(dragon.head.position);}}
   dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();
-  $('hint').textContent='Le diadème protège chaque tête : frappez quand sa gueule s’embrase.';$('hint').style.opacity=1;setTimeout(()=>{$('hint').style.opacity=0;},9000);phase='boss';sfx.roar();}
+  holdHint('Le diadème protège chaque tête : frappez quand sa gueule s’embrase.',9);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
-  if(P.hp<=0){P.hp=0;state='dead';burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('dead').hidden=false;$('cross').hidden=true;}}
-function win(){state='won';moodTarget=0;sfx.win();$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
+  if(P.hp<=0){P.hp=0;state='dead';deadT=0;burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();endStats('dead',false);$('cross').hidden=true;}} // le panneau de défaite s'affiche après la chute (voir la boucle)
+function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);endStats('won',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
 $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
+// titre découpé en lettres pour l'apparition (le texte complet reste lu d'un bloc par les lecteurs d'écran)
+{const h=$('title'),txt=h.textContent;let i=0;h.setAttribute('aria-label',txt);h.innerHTML=txt.split(' ').map(w=>'<span class="w" aria-hidden="true">'+[...w].map(c=>'<span class="l" style="--i:'+(i++)+'">'+c+'</span>').join('')+'</span>').join(' ');
+  setTimeout(()=>$('menu').classList.remove('intro'),4200);}
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
 $('volM').value=Math.round(VOL.music*100);$('volS').value=Math.round(VOL.sfx*100);
+$('pauseMenu').onclick=$('deadMenu').onclick=$('wonMenu').onclick=toMenu;$('easier').onclick=()=>{setDiff(diffI-1);startGame();};
+$('pauseKeys').innerHTML=$('cmds').innerHTML;if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('coarse'); // rappel des commandes dans la pause
 $('resume').onclick=()=>togglePause(false);$('restart').onclick=()=>{togglePause(false);startGame();};
 $('volM2').oninput=e=>{VOL.music=e.target.value/100;setVolumes();};$('volS2').oninput=e=>{VOL.sfx=e.target.value/100;setVolumes();};
 $('volM').oninput=e=>{VOL.music=e.target.value/100;setVolumes();};$('volS').oninput=e=>{VOL.sfx=e.target.value/100;setVolumes();if(AU)sfx.shoot();};
+// téléphone tenu en portrait : on invite à le tourner (la partie se met en pause) ; « Continuer ainsi » referme l'invitation pour de bon
+{const mq=matchMedia('(orientation:portrait) and (pointer:coarse)');let skip=false;
+  const upd=()=>{const on=mq.matches&&!skip;$('rotate').hidden=!on;if(on)togglePause(true);};
+  mq.addEventListener('change',upd);$('rotateSkip').onclick=()=>{skip=true;upd();};upd();}
 addEventListener('pointerdown',()=>{if(!ac)initAudio();else if(ac.state==='suspended')ac.resume();},{once:false});
 
 /* ---------- mises à jour ---------- */
@@ -924,7 +1136,7 @@ function updatePlayer(dt){
   let sx,sy,boost=false;
   if(state==='play'){
     const kx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0), ky=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
-    sx=clamp(dz(mx)+kx,-1,1);sy=clamp(dz(my)+ky,-1,1);boost=keys.ShiftLeft||keys.ShiftRight;
+    sx=clamp(dz(mx)*SET.sens+kx,-1,1);sy=clamp(dz(my)*SET.sens+ky,-1,1)*(SET.invY?-1:1);boost=keys.ShiftLeft||keys.ShiftRight;
   }else if(state==='dead'){sx=.3;sy=.9;}
   else{sx=Math.sin(time*.3)*.22;sy=clamp((P.pos.y-320)*.004+P.pitch*1.2,-.4,.4);}
   P.yaw-=sx*(1.85+(P.speed>150?.25:0))*dt;P.pitch=clamp(P.pitch-sy*1.4*dt,-1.15,1.15); // virage plus vif (critique visée)
@@ -945,7 +1157,7 @@ function updatePlayer(dt){
   const flap=Math.sin(time*(boost?11:6.5))*.42+.12;wingR.rotation.y=-flap;wingL.rotation.y=flap;
   angel.visible=!(state==='dead'&&grounded);
   // tir
-  P.fireT-=dt;P.sinceHit+=dt;if(P.sinceHit>5&&state==='play')P.hp=Math.min(100,P.hp+2*dt);
+  P.fireT-=dt;P.sinceHit+=dt;const regen=P.sinceHit>5&&state==='play'&&P.hp<100;if(regen)P.hp=Math.min(100,P.hp+2*dt);else P.regenFrom=P.hp; // regenFrom : Lumière au début de la régénération en cours
   if(state==='play'&&(firing||keys.Space)&&P.fireT<=0){P.fireT=.13;
     const dir=tmp2.copy(fwd);if(lockT){const t=lockT.pos.distanceTo(P.pos)/760;dir.copy(lockT.pos).addScaledVector(lockT.vel,t).sub(P.pos).normalize();}
     const b=bolts.find(b=>b.life<=0);if(b){b.m.position.copy(P.pos).addScaledVector(fwd,8);b.v.copy(dir).multiplyScalar(760);b.m.quaternion.setFromUnitVectors(UP,dir);b.m.visible=true;b.life=1.5;b.ref=lockT?lockT.ref:null;b.tgt=lockT?lockT.pos:null;sfx.shoot();P.castT=1;}
@@ -956,10 +1168,10 @@ function updateBolts(dt){
     if(b.ref&&(b.ref.alive===undefined?demons.includes(b.ref):b.ref.alive)){ // traits verrouillés : légère courbe vers la cible
       tmp.copy(b.tgt).sub(b.m.position);if(tmp.lengthSq()>1){tmp.normalize().multiplyScalar(760);b.v.lerp(tmp,1-Math.exp(-dt*5));b.m.quaternion.setFromUnitVectors(UP,tmp2.copy(b.v).normalize());}}
     b.m.position.addScaledVector(b.v,dt);let hit=false;const p=b.m.position;
-    for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
+    for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;learn('fire');registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
       if(d.hp<=0)killDemon(i);else if(time-d.wordT>.5){word('TOUCHÉ',p);d.wordT=time;}}}
     if(!hit&&dragon.alive&&dragon.dying<0){
-      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=h.cool<1.1||h.lunge>.05;hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
+      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=headOpen(h);hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
         for(const n of h.neck){const rr=n.r+6;if(p.distanceToSquared(n.g.position)<rr*rr){hit=true;hitHead(h,.4,p,false);break;}}if(hit)break;}
       if(!hit)for(const sg2 of dragon.segs){const rr=sg2.r+7;if(p.distanceToSquared(sg2.g.position)<rr*rr){hit=true;burst(p,4,3,3,6,50,.3);dragon.flash=.3;
         {let nh=null,nd=1e9;for(const h of dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(p);if(dd<nd){nd=dd;nh=h;}}if(nh){nh.hp-=.15;nh.flash=Math.max(nh.flash,.3);if(nh.hp<=0)killHead(nh);}} // le corps transmet un peu de dégâts : jamais de blocage
@@ -1007,36 +1219,57 @@ function updateDragon(dt){
   let prev=H.position;
   for(const s of dragon.segs){tmp.copy(s.g.position).sub(prev);const l=tmp.length()||1;s.g.position.copy(prev).addScaledVector(tmp,SPACING/l);s.g.lookAt(prev);prev=s.g.position;}
   {const ph=time*2.4;for(const [piv,s] of dragon.wings){piv.rotation.z=s*Math.sin(ph)*.6;piv.rotation.y=s*Math.cos(ph)*.12;if(piv.userData.outer)piv.userData.outer.rotation.z=s*Math.sin(ph-1.2)*.7;}} // battement en deux temps : la pointe suit avec retard
-  $('bossHp').style.width=(dragon.hp/dragon.max*100)+'%';
+  updateCrowns();
 }
 
 /* ---------- interface ---------- */
 const arrows=[];for(let i=0;i<10;i++){const a=document.createElement('div');a.className='arrow';a.hidden=true;$('arrows').appendChild(a);arrows.push(a);}
+const farcs=[],FARC_D=340;for(let i=0;i<4;i++){const a=document.createElement('div');a.className='farc';a.hidden=true;$('arrows').appendChild(a);farcs.push(a);}
+const threats=[];
 let W=1,Hh=1;
+// recharge d'une compétence : anneau (--p), état prêt, éclat à l'instant où elle redevient disponible
+function cdUi(el,p,ready){el.style.setProperty('--p',p.toFixed(3));const was=el.classList.contains('ready');if(ready!==was){el.classList.toggle('ready',ready);el.classList.toggle('flash',ready);}}
 function updateHud(){
-  $('hp').style.width=P.hp+'%';$('score').textContent=score;$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
-  $('skJ').style.setProperty('--p',1-P.jCool/J_COOL);$('skJ').classList.toggle('ready',P.jCool<=0&&!J.on);
-  $('skE').style.setProperty('--p',1-P.dodgeCool/DODGE_COOL);$('skE').classList.toggle('ready',P.dodgeCool<=0);
-  const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;lk.classList.toggle('boss',lockT.boss);
+  updateHint();$('art').classList.toggle('off',state!=='menu');
+  $('hp').style.width=P.hp+'%';{const low=lowLight(),g=$('hpGain'),from=Math.min(P.regenFrom??P.hp,P.hp),on=state==='play'&&P.hp-from>.2;
+    $('hpBar').classList.toggle('low',low);$('danger').classList.toggle('on',low);g.classList.toggle('on',on);if(on){g.style.left=from+'%';g.style.width=(P.hp-from)+'%';}}
+  $('score').textContent=fmtN(score);$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
+  {const b=$('comboBar'),on=combo>=3&&state==='play';b.classList.toggle('on',on);if(on)b.firstElementChild.style.width=(clamp(comboT/COMBO_T,0,1)*100).toFixed(1)+'%';if(combo<5)$('combo').style.setProperty('--tier',0);}
+  const jp=1-P.jCool/J_COOL,jr=P.jCool<=0&&!J.on,ep=1-P.dodgeCool/DODGE_COOL,er=P.dodgeCool<=0;
+  if(touchMode){cdUi($('tJ'),jp,jr);cdUi($('tE'),ep,er);}else{cdUi($('skJ'),jp,jr);cdUi($('skE'),ep,er);}
+  const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;{const open=lockT.boss&&headOpen(lockT.ref);lk.classList.toggle('boss',lockT.boss&&!open);lk.classList.toggle('open',open);} // tête du Dragon : braise tant que le diadème la protège, or quand la gueule s'embrase
+    
     const sc=1+Math.sin(time*7)*.06;lk.style.left=((tmp.x*.5+.5)*W)+'px';lk.style.top=((-tmp.y*.5+.5)*Hh)+'px';lk.style.transform='rotate('+(45+time*60)+'deg) scale('+sc+')';}else lk.hidden=true;}else lk.hidden=true;
   for(const w of words){if(!w.on)continue;const age=time-w.t0;if(age>.95){w.on=false;w.el.hidden=true;continue;}
     tmp.copy(w.pos).project(camera);if(tmp.z>1){w.el.style.opacity=0;continue;}
     const pop=age<.12?.6+age/.12*.6:1.2-Math.min(.2,(age-.12)*.5);
     w.el.style.opacity=age<.6?1:1-(age-.6)/.35;w.el.style.transform='translate('+((tmp.x*.5+.5)*W+w.dx)+'px,'+((-tmp.y*.5+.5)*Hh-age*70+(w.dy||0))+'px) translate(-50%,-50%) scale('+pop+')';}$('hurt').style.opacity=hurt*.9;
   tmp.copy(P.pos).addScaledVector(fwd,420).project(camera);const c=$('cross');c.style.left=((tmp.x*.5+.5)*W)+'px';c.style.top=((-tmp.y*.5+.5)*Hh)+'px';
-  let n=0;const mark=p=>{if(n>=arrows.length)return;tmp.copy(p).project(camera);let x=tmp.x,y=tmp.y;const behind=tmp.z>1;if(behind){x=-x;y=-y;}
-    if(!behind&&Math.abs(x)<.93&&Math.abs(y)<.9)return;const m=Math.max(Math.abs(x)/.93,Math.abs(y)/.88,.001);x/=m;y/=m;
-    const a=arrows[n++];a.hidden=false;a.style.left=((x*.5+.5)*W)+'px';a.style.top=((-y*.5+.5)*Hh)+'px';a.style.transform='translate(-50%,-50%) rotate('+Math.atan2(-y,x)+'rad)';};
-  if(state==='play'){for(const d of demons)mark(d.g.position);if(dragon.alive)mark(dragon.head.position);}
+  // bord d'écran : direction d'un point hors champ (null s'il est visible)
+  const edge=p=>{tmp.copy(p).project(camera);let x=tmp.x,y=tmp.y;const behind=tmp.z>1;if(behind){x=-x;y=-y;}
+    if(!behind&&Math.abs(x)<.93&&Math.abs(y)<.9)return null;const m=Math.max(Math.abs(x)/.93,Math.abs(y)/.88,.001);return [x/m,y/m];};
+  let n=0;const mark=(p,boss)=>{if(n>=arrows.length)return;const e=edge(p);if(!e)return;const [x,y]=e;
+    const a=arrows[n++];a.hidden=false;a.classList.toggle('boss',!!boss); // le Dragon a sa propre flèche, en fer de lance
+    a.style.left=((x*.5+.5)*W)+'px';a.style.top=((-y*.5+.5)*Hh)+'px';a.style.transform='translate(-50%,-50%) rotate('+Math.atan2(-y,x)+'rad)';};
+  if(state==='play'){for(const d of demons)mark(d.g.position);if(dragon.alive)mark(dragon.head.position,true);}
   for(let i=n;i<arrows.length;i++)arrows[i].hidden=true;
+  // boules de feu proches qui foncent sur l'ange sans être à l'écran
+  threats.length=0;if(state==='play')for(const f of fires){if(f.life<=0)continue;tmp2.copy(P.pos).sub(f.m.position);const d=tmp2.length();if(d>FARC_D||tmp2.dot(f.v)<=0)continue;const e=edge(f.m.position);if(e)threats.push({d,e});}
+  threats.sort((a,b)=>a.d-b.d);
+  farcs.forEach((a,i)=>{const t=threats[i];a.hidden=!t;if(!t)return;const k=1-t.d/FARC_D,[x,y]=t.e;a.style.left=((x*.9*.5+.5)*W)+'px';a.style.top=((-y*.9*.5+.5)*Hh)+'px';a.style.opacity=(.3+.7*k).toFixed(2);
+    a.style.transform='rotate('+Math.atan2(-y,x)+'rad) scale('+(.75+.6*k).toFixed(2)+')';});
 }
 function resize(){W=stage.clientWidth||1;Hh=stage.clientHeight||1;renderer.setSize(W,Hh,false);composer.setSize(W,Hh);camera.aspect=W/Hh;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);new ResizeObserver(resize).observe(stage);resize();
 
 /* ---------- boucle ---------- */
-const camPos=new V(0,270,30);let frameMs=16;let last=performance.now();
+const camPos=new V(0,270,30);let camIn=0;let frameMs=16;let last=performance.now();
 function frame(now){
-  let dt=Math.min(.05,(now-last)/1000);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}time+=dt;
+  const real=clamp((now-last)/1000,0,1);let dt=Math.min(.05,real);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}
+  if(state==='dead'){const before=deadT;deadT+=real;if(before<DEATH_PANEL&&deadT>=DEATH_PANEL){$('dead').classList.add('fade');$('dead').hidden=false;}
+    if(!reduced){dt*=deadT<1?.28:lerp(.28,1,clamp(deadT-1,0,1)); // une seconde de ralenti, puis le temps reprend
+      if(angel.visible&&Math.random()<.6)burst(P.pos,7,6.2,4.2,2,26,1.8);}} // plumes de lumière
+  time+=dt;updateEnd(real);
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
   updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
@@ -1045,7 +1278,8 @@ function frame(now){
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)$('banner').classList.remove('on');}
   hurt=Math.max(0,hurt-dt*1.6);shake=Math.max(0,shake-dt*1.5);
   // caméra de poursuite
-  tmp.copy(P.pos).addScaledVector(fwd,-30);tmp.y+=13;camPos.lerp(tmp,1-Math.exp(-dt*6));
+  {const pull=state==='dead'&&!reduced?smooth01(0,2.6,deadT):0; // à la mort de l'ange, la caméra s'éloigne et s'élève
+   tmp.copy(P.pos).addScaledVector(fwd,-30-pull*95);tmp.y+=13+pull*38;camIn=Math.max(0,camIn-dt);camPos.lerp(tmp,1-Math.exp(-(state==='dead'?Math.min(.05,real):dt)*(camIn>0?lerp(6,1.5,camIn/2):6)));}
   camera.position.copy(camPos);if(shake>0){camera.position.x+=rand(-1,1)*shake*3;camera.position.y+=rand(-1,1)*shake*3;}
   tmp.copy(P.pos).addScaledVector(fwd,40);camera.lookAt(tmp);camera.rotateZ(P.roll*.5);
   const fov=lerp(62,76,clamp((P.speed-112)/83,0,1));if(Math.abs(fov-camera.fov)>.05){camera.fov=fov;camera.updateProjectionMatrix();}
@@ -1057,6 +1291,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
