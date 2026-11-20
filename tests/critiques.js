@@ -171,7 +171,7 @@ const CRITIQUES={
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
       window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&document.querySelectorAll('#pauseKeys .keys.kb kbd').length>=8&&!!document.querySelector('#pauseKeys .keys.tc');
       $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
-      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.gain(1234);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);r.image_fondue_en_jeu=await until(()=>$('art').classList.contains('off'),3);D.gain(1234);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
       r.chute_mise_en_scene=sec&&$('dead').classList.contains('fade')&&D.camera.position.distanceTo(D.P.pos)>70; // le panneau attend la chute, la caméra s'est éloignée
       // fin de partie : le score défile jusqu'à sa valeur, les lignes se révèlent, puis le rang ; sceau doré pour un record
       r.rangs=D.rankOf(false,1000,100)===0&&D.rankOf(false,30000,100)===1&&D.rankOf(true,10000,100)===1&&D.rankOf(true,60000,61)===1&&D.rankOf(true,60000,40)===2&&D.rankOf(false,90000,0)===1;
@@ -182,6 +182,10 @@ const CRITIQUES={
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
       D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');r.pas_de_sceau_sans_record=!document.querySelector('#deadScore .seal');
       $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
+      // titre découpé en lettres, image de titre visible au menu seulement ; icône d'onglet et aperçu de lien présents
+      r.titre_en_lettres=document.querySelectorAll('#title .l').length===16&&$('title').getAttribute('aria-label')==='Guerre dans le Ciel'&&$('title').textContent.replace(/\s+/g,' ')==='Guerre dans le Ciel';
+      r.image_de_titre_au_menu=await until(()=>!$('art').classList.contains('off'),3);
+      r.icone_et_apercu=!!document.querySelector('link[rel=icon]')&&document.querySelector('meta[name=theme-color]').content==='#0a0e22'&&/keyart/.test(document.querySelector('meta[property="og:image"]').content);
       // menu allégé : commandes (touches dessinées) et réglages rangés dans un volet fermé au départ
       {const m=$('more'),v=e=>e.checkVisibility();r.menu_volet_ferme=!m.open&&!v($('volM'))&&v($('play'))&&!document.querySelector('#menu .panel > .keys');
        m.open=true;r.menu_volet_ouvert=v($('volM'))&&v($('sens'))&&m.querySelectorAll('kbd').length>=8;m.open=false;}

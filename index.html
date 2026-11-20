@@ -66,7 +66,17 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 #hint.urgent{border-color:var(--ember);box-shadow:0 0 18px rgba(229,72,44,.7);animation:hintPulse .5s ease-in-out infinite alternate}
 @keyframes hintPulse{to{transform:scale(1.07)}}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,var(--veil) 0%,rgba(8,10,26,.2) 75%);padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
-#menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%),url(keyart.webp) center/cover no-repeat var(--night)}
+#menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%)}
+/* image de titre : lent mouvement derrière le menu ; au départ elle se fond vers le ciel du jeu */
+#art{position:absolute;inset:0;overflow:hidden;background:var(--night);transition:opacity 1.5s ease,visibility 0s}
+#art.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 1.5s ease,visibility 0s 1.5s}
+#art i{position:absolute;inset:0;background:url(keyart.webp) center/cover no-repeat;animation:artDrift 44s ease-in-out infinite alternate}
+@keyframes artDrift{from{transform:scale(1.03)}to{transform:scale(1.13) translate(-1.6%,1.2%)}}
+/* le titre apparaît lettre à lettre dans un halo doré */
+h1 .w{display:inline-block;white-space:nowrap}
+#menu.intro h1 .l{display:inline-block;opacity:0;animation:letterIn .75s ease-out forwards;animation-delay:calc(.25s + var(--i) * 60ms)}
+@keyframes letterIn{from{opacity:0;transform:translateY(.22em) scale(1.3);filter:blur(7px);text-shadow:0 0 46px rgba(243,197,82,1),0 0 90px rgba(255,246,210,.9)}to{opacity:1}}
+#menu.intro .panel > :not(.eyebrow,h1){animation:screenIn 1s ease 1.4s both}
 .screen.fade{animation:screenIn 1s ease both}
 @keyframes screenIn{from{opacity:0}}
 .panel{margin-block:auto;max-width:36rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -164,7 +174,7 @@ body.touch #skills{display:none}
 .seal.in{opacity:1;transform:rotate(-12deg);animation:sealShine 1.4s ease-in-out .4s infinite alternate}
 @keyframes sealShine{from{box-shadow:0 0 10px rgba(243,197,82,.5)}to{box-shadow:0 0 30px 6px rgba(255,246,210,.95)}}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}details.more .inner{gap:8px;padding:10px 14px}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown,.stats > *,.rank,.seal{transition:none}#hint.urgent,#combo.bump,.screen.fade,.seal.in,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
+@media (prefers-reduced-motion:reduce){#menu.intro h1 .l{opacity:1}#art,#art.off{transition:none}#banner,.bar > i,#hint,.crown,.stats > *,.rank,.seal{transition:none}#hint.urgent,#combo.bump,.screen.fade,#art i,#menu.intro h1 .l,#menu.intro .panel > :not(.eyebrow,h1),.seal.in,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
@@ -195,10 +205,11 @@ body.touch #skills{display:none}
   <div id="arrows"></div>
   <div id="banner"><h2 id="bTitle"></h2><p id="bSub"></p></div>
 
-  <div class="screen" id="menu">
+  <div id="art"><i></i></div>
+  <div class="screen intro" id="menu">
     <div class="panel">
       <div class="eyebrow">Apocalypse, chapitre 12</div>
-      <h1>Guerre dans le Ciel</h1>
+      <h1 id="title">Guerre dans le Ciel</h1>
       <p class="verse">« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. »<cite>Apocalypse 12:7</cite></p>
       <div class="diff" role="radiogroup" aria-label="Difficulté"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
       <div class="diffInfo"></div>
@@ -1076,7 +1087,8 @@ function checkDragonDown(){if(dragon.hp<=0&&dragon.dying<0){dragon.hp=0;dragon.d
 function banner(t,s,d=3.2){$('bTitle').textContent=t;$('bSub').textContent=s||'';$('banner').classList.add('on');bannerT=d;}
 function clearField(){for(const d of demons)scene.remove(d.g);demons.length=0;for(const f of fires){f.life=0;f.m.visible=false;}for(const b of bolts){b.life=0;b.m.visible=false;}
   dragon.alive=false;dragon.dying=-1;dragon.root.visible=false;$('boss').hidden=true;}
-function startGame(){deadT=0;RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
+function startGame(){deadT=0;if(state==='menu'&&!reduced){camPos.copy(P.pos).addScaledVector(fwd,-260);camPos.y+=130;camIn=2;} // depuis le menu : la caméra part de loin et rejoint l'ange pendant que l'image se fond
+  RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
   initAudio();
   clearField();P.pos.set(0,320,0);P.yaw=0;P.pitch=0;P.hp=100;P.sinceHit=9;P.jCool=0;P.dodgeT=0;P.dodgeCool=0;combo=0;comboT=0;lockT=null;J.on=false;J.g.visible=false;score=0;wave=0;moodTarget=0;state='play';
   $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;TUT.hold=null;nextWave();
@@ -1100,6 +1112,9 @@ function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hu
   if(P.hp<=0){P.hp=0;state='dead';deadT=0;burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();endStats('dead',false);$('cross').hidden=true;}} // le panneau de défaite s'affiche après la chute (voir la boucle)
 function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);endStats('won',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
 $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
+// titre découpé en lettres pour l'apparition (le texte complet reste lu d'un bloc par les lecteurs d'écran)
+{const h=$('title'),txt=h.textContent;let i=0;h.setAttribute('aria-label',txt);h.innerHTML=txt.split(' ').map(w=>'<span class="w" aria-hidden="true">'+[...w].map(c=>'<span class="l" style="--i:'+(i++)+'">'+c+'</span>').join('')+'</span>').join(' ');
+  setTimeout(()=>$('menu').classList.remove('intro'),4200);}
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
 $('volM').value=Math.round(VOL.music*100);$('volS').value=Math.round(VOL.sfx*100);
 $('pauseMenu').onclick=$('deadMenu').onclick=$('wonMenu').onclick=toMenu;$('easier').onclick=()=>{setDiff(diffI-1);startGame();};
@@ -1212,7 +1227,7 @@ let W=1,Hh=1;
 // recharge d'une compétence : anneau (--p), état prêt, éclat à l'instant où elle redevient disponible
 function cdUi(el,p,ready){el.style.setProperty('--p',p.toFixed(3));const was=el.classList.contains('ready');if(ready!==was){el.classList.toggle('ready',ready);el.classList.toggle('flash',ready);}}
 function updateHud(){
-  updateHint();
+  updateHint();$('art').classList.toggle('off',state!=='menu');
   $('hp').style.width=P.hp+'%';{const low=lowLight(),g=$('hpGain'),from=Math.min(P.regenFrom??P.hp,P.hp),on=state==='play'&&P.hp-from>.2;
     $('hpBar').classList.toggle('low',low);$('danger').classList.toggle('on',low);g.classList.toggle('on',on);if(on){g.style.left=from+'%';g.style.width=(P.hp-from)+'%';}}
   $('score').textContent=fmtN(score);$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
@@ -1245,7 +1260,7 @@ function resize(){W=stage.clientWidth||1;Hh=stage.clientHeight||1;renderer.setSi
 addEventListener('resize',resize);new ResizeObserver(resize).observe(stage);resize();
 
 /* ---------- boucle ---------- */
-const camPos=new V(0,270,30);let frameMs=16;let last=performance.now();
+const camPos=new V(0,270,30);let camIn=0;let frameMs=16;let last=performance.now();
 function frame(now){
   const real=clamp((now-last)/1000,0,1);let dt=Math.min(.05,real);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}
   if(state==='dead'){const before=deadT;deadT+=real;if(before<DEATH_PANEL&&deadT>=DEATH_PANEL){$('dead').classList.add('fade');$('dead').hidden=false;}
@@ -1261,7 +1276,7 @@ function frame(now){
   hurt=Math.max(0,hurt-dt*1.6);shake=Math.max(0,shake-dt*1.5);
   // caméra de poursuite
   {const pull=state==='dead'&&!reduced?smooth01(0,2.6,deadT):0; // à la mort de l'ange, la caméra s'éloigne et s'élève
-   tmp.copy(P.pos).addScaledVector(fwd,-30-pull*95);tmp.y+=13+pull*38;camPos.lerp(tmp,1-Math.exp(-(state==='dead'?Math.min(.05,real):dt)*6));}
+   tmp.copy(P.pos).addScaledVector(fwd,-30-pull*95);tmp.y+=13+pull*38;camIn=Math.max(0,camIn-dt);camPos.lerp(tmp,1-Math.exp(-(state==='dead'?Math.min(.05,real):dt)*(camIn>0?lerp(6,1.5,camIn/2):6)));}
   camera.position.copy(camPos);if(shake>0){camera.position.x+=rand(-1,1)*shake*3;camera.position.y+=rand(-1,1)*shake*3;}
   tmp.copy(P.pos).addScaledVector(fwd,40);camera.lookAt(tmp);camera.rotateZ(P.roll*.5);
   const fov=lerp(62,76,clamp((P.speed-112)/83,0,1));if(Math.abs(fov-camera.fov)>.05){camera.fov=fov;camera.updateProjectionMatrix();}
