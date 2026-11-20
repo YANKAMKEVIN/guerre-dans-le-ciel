@@ -121,6 +121,16 @@ const CRITIQUES={
       r.musique_assourdie=!D.AU||await until(()=>D.AU.mlp.frequency.value<3000,6);
       P.sinceHit=6;r.regeneration_visible=await until(()=>g.classList.contains('on')&&parseFloat(g.style.width)>0&&Math.abs(parseFloat(g.style.left)-22)<1.5,6);
       P.hp=80;P.sinceHit=0;r.alerte_levee=await until(()=>!bar.classList.contains('low')&&!dg.classList.contains('on')&&!g.classList.contains('on'));P.hp=100;return r;}));
+    // Dragon : sept diadèmes, fissurés selon les dégâts, brisés quand la tête tombe, brillants gueule embrasée
+    await p.evaluate(()=>__dbg.boss());await p.waitForFunction(()=>__dbg.dragon.alive,null,{timeout:120000});
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,H=D.dragon.heads,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),cr=[...document.querySelectorAll('#crowns .crown')],has=(i,c)=>cr[i].classList.contains(c);
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();},max=H[6].hp;
+      const keep=setInterval(()=>{P.hp=100;H.forEach((h,i)=>{if(i!==3)h.cool=50;});},16);await wait(200);
+      r.sept_diademes=cr.length===7&&await until(()=>cr.every(c=>c.classList.length===1||(c.classList.length===2&&c.classList.contains('open'))),5);
+      H[1].hp=max*.5;H[2].hp=max*.2;H[0].alive=false;H[0].hp=0;H[0].g.visible=false;
+      r.diademes_fissures=await until(()=>has(1,'d1')&&has(2,'d2')&&!has(1,'d2'),5);r.diademe_brise=await until(()=>has(0,'dead'),5);
+      H[3].cool=50;r.diademe_ferme=await until(()=>!has(3,'open'),5);H[3].cool=.9;r.diademe_embrase=await until(()=>has(3,'open')&&!has(4,'open'),5);
+      clearInterval(keep);H.forEach(h=>h.cool=999);for(const f of D.fires){f.life=0;f.m.visible=false;}P.hp=100;return r;}));
     // tactile : la recharge se lit sur les boutons ronds (anneau, bouton sombre, éclat au retour)
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),tJ=document.getElementById('tJ'),tE=document.getElementById('tE');
       const st=document.getElementById('stage');st.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'touch',pointerId:7,bubbles:true,clientX:20,clientY:200}));dispatchEvent(new PointerEvent('pointerup',{pointerType:'touch',pointerId:7,bubbles:true}));D.input(0,0,false);

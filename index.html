@@ -31,8 +31,15 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 @keyframes dangerPulse{from{opacity:.55}to{opacity:1}}
 #score{font-family:var(--font-display);font-weight:700;font-size:1.5rem;font-variant-numeric:tabular-nums;text-align:right;text-shadow:0 1px 8px rgba(0,0,0,.7)}
 #boss{align-self:center;text-align:center;width:min(86vw,560px)}
-#boss .bar{width:100%;height:12px;border-color:rgba(229,72,44,.7)}
-#boss .bar > i{background:linear-gradient(90deg,#7a0f0a,var(--ember))}
+/* les sept diadèmes : plein, fissuré selon les dégâts, brisé quand la tête tombe ; celui dont la gueule s'embrase brille */
+#crowns{display:flex;justify-content:center;gap:clamp(6px,1.6vw,14px);margin-top:7px}
+.crown{width:clamp(26px,5vw,38px);height:auto;overflow:visible;fill:var(--gold);stroke:#4a2c04;stroke-width:1.2;stroke-linejoin:round;filter:drop-shadow(0 1px 4px rgba(0,0,0,.75));transition:transform .2s,opacity .4s,fill .3s}
+.crown .c1,.crown .c2{fill:none;stroke:#3a1208;stroke-width:1.5;stroke-linecap:round;opacity:0}
+.crown.d1 .c1,.crown.d2 .c1,.crown.d2 .c2,.crown.dead .c1,.crown.dead .c2{opacity:1}
+.crown.d1{fill:#d6a23c}
+.crown.d2{fill:#b0742a}
+.crown.open{fill:#fff1c4;transform:scale(1.32);filter:drop-shadow(0 0 7px var(--ember)) drop-shadow(0 0 3px #fff)}
+.crown.dead{fill:rgba(8,10,26,.55);stroke:rgba(229,72,44,.6);transform:translateY(4px) rotate(14deg);opacity:.6;filter:none}
 #boss .label{color:var(--ember)}
 #banner{position:absolute;left:0;right:0;top:24%;text-align:center;padding-inline:max(16px,env(safe-area-inset-left,0px));opacity:0;transition:opacity .6s}
 #banner.on{opacity:1}
@@ -64,6 +71,7 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .final{font-family:var(--font-display);font-size:1.1rem;letter-spacing:.14em;font-variant-numeric:tabular-nums}
 #lock{position:absolute;width:50px;height:50px;margin:-25px 0 0 -25px;border:2px solid var(--gold);transform:rotate(45deg);box-shadow:0 0 12px rgba(243,197,82,.8),inset 0 0 8px rgba(243,197,82,.5);pointer-events:none}
 #lock.boss{border-color:var(--ember);box-shadow:0 0 14px rgba(229,72,44,.9)}
+#lock.open{border-color:var(--gold);border-width:3px;box-shadow:0 0 22px rgba(255,241,196,1),inset 0 0 10px rgba(243,197,82,.8)}
 #words{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .hitword{position:absolute;left:0;top:0;font-family:var(--font-display);font-weight:900;font-size:1.45rem;letter-spacing:.06em;color:var(--ivory);-webkit-text-stroke:1.5px #3a1208;paint-order:stroke fill;text-shadow:0 0 14px rgba(243,197,82,.85);white-space:nowrap;will-change:transform,opacity}
 .hitword.kill{font-size:2.2rem;color:var(--gold)}
@@ -99,7 +107,7 @@ body.touch #skills{display:none}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint{transition:none}#hint.urgent,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
@@ -111,7 +119,7 @@ body.touch #skills{display:none}
       <div><div class="label">Lumière</div><div class="bar" id="hpBar"><i id="hp"></i><span id="hpGain"></span></div></div>
       <div><div class="label" id="waveLabel">Vague I</div><div id="score">0</div><div id="combo"></div></div>
     </div>
-    <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div class="bar"><i id="bossHp"></i></div></div>
+    <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div id="crowns" role="img" aria-label="Diadèmes du Dragon"></div></div>
     <div id="skills"><div class="skill" id="skJ"><b>F</b><span>Jugement</span></div><div class="skill" id="skE"><b>E</b><span>Esquive</span></div></div>
     <div id="hint" role="status"></div>
   </div>
@@ -892,6 +900,11 @@ function updateLock(){
 }
 const hF=new V(),hR=new V(),hU=new V(),hT=new V(),hP0=new V(),hP1=new V(),hW=new V(),lookO=new THREE.Object3D();
 const headsLeft=()=>dragon.heads.filter(h=>h.alive).length;
+const headOpen=h=>h.alive&&(h.cool<1.1||h.lunge>.05); // gueule embrasée : seul moment où le diadème ne protège plus la tête
+// un diadème par tête dans le bandeau du Dragon
+const crownEls=dragon.heads.map(()=>{const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 28 22');sv.setAttribute('class','crown');
+  sv.innerHTML='<path d="M3 20H25L27 5 20 12 14 2 8 12 1 5Z"/><path class="c1" d="M14 2l-2 6 3 4-2 8"/><path class="c2" d="M8 12l2 3-2 5M20 12l-1.5 4 2 4"/>';$('crowns').appendChild(sv);return sv;});
+function updateCrowns(){const max=headHp();dragon.heads.forEach((h,i)=>{const c=crownEls[i].classList,f=h.hp/max;c.toggle('dead',!h.alive);c.toggle('d1',h.alive&&f<.66&&f>=.33);c.toggle('d2',h.alive&&f<.33);c.toggle('open',dragon.dying<0&&headOpen(h));});}
 function bossLabel(){const n=headsLeft();$('bossLabel').textContent='Le Dragon, le serpent ancien · '+n+(n>1?' têtes':' tête');}
 function hitHead(h,dmg,p,crit){if(!h.alive)return;h.hp-=dmg;h.flash=1;registerHit();burst(p,9,6,2,crit?24:10,100,.6);sfx.hit();score+=Math.round(dmg*12*mult());
   if(time-h.wordT>.6){word(crit?'GUEULE OUVERTE !':'DIADÈME',p,crit?'crit':'');h.wordT=time;}if(h.hp<=0)killHead(h);}
@@ -1002,7 +1015,7 @@ function updateBolts(dt){
     for(let i=demons.length-1;i>=0&&!hit;i--){const d=demons[i];if(p.distanceToSquared(d.g.position)<19*19){hit=true;d.hp--;d.flash=1;learn('fire');registerHit();burst(p,8,6,2,16,80,.5);sfx.hit();
       if(d.hp<=0)killDemon(i);else if(time-d.wordT>.5){word('TOUCHÉ',p);d.wordT=time;}}}
     if(!hit&&dragon.alive&&dragon.dying<0){
-      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=h.cool<1.1||h.lunge>.05;hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
+      for(const h of dragon.heads){if(!h.alive)continue;if(p.distanceToSquared(h.g.position)<26*26){hit=true;const open=headOpen(h);hitHead(h,open?5:.6,p,open);break;} // diadème : la tête n'est vulnérable que gueule ouverte
         for(const n of h.neck){const rr=n.r+6;if(p.distanceToSquared(n.g.position)<rr*rr){hit=true;hitHead(h,.4,p,false);break;}}if(hit)break;}
       if(!hit)for(const sg2 of dragon.segs){const rr=sg2.r+7;if(p.distanceToSquared(sg2.g.position)<rr*rr){hit=true;burst(p,4,3,3,6,50,.3);dragon.flash=.3;
         {let nh=null,nd=1e9;for(const h of dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(p);if(dd<nd){nd=dd;nh=h;}}if(nh){nh.hp-=.15;nh.flash=Math.max(nh.flash,.3);if(nh.hp<=0)killHead(nh);}} // le corps transmet un peu de dégâts : jamais de blocage
@@ -1050,7 +1063,7 @@ function updateDragon(dt){
   let prev=H.position;
   for(const s of dragon.segs){tmp.copy(s.g.position).sub(prev);const l=tmp.length()||1;s.g.position.copy(prev).addScaledVector(tmp,SPACING/l);s.g.lookAt(prev);prev=s.g.position;}
   {const ph=time*2.4;for(const [piv,s] of dragon.wings){piv.rotation.z=s*Math.sin(ph)*.6;piv.rotation.y=s*Math.cos(ph)*.12;if(piv.userData.outer)piv.userData.outer.rotation.z=s*Math.sin(ph-1.2)*.7;}} // battement en deux temps : la pointe suit avec retard
-  $('bossHp').style.width=(dragon.hp/dragon.max*100)+'%';
+  updateCrowns();
 }
 
 /* ---------- interface ---------- */
@@ -1065,7 +1078,8 @@ function updateHud(){
   $('score').textContent=score;$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
   const jp=1-P.jCool/J_COOL,jr=P.jCool<=0&&!J.on,ep=1-P.dodgeCool/DODGE_COOL,er=P.dodgeCool<=0;
   if(touchMode){cdUi($('tJ'),jp,jr);cdUi($('tE'),ep,er);}else{cdUi($('skJ'),jp,jr);cdUi($('skE'),ep,er);}
-  const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;lk.classList.toggle('boss',lockT.boss);
+  const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;{const open=lockT.boss&&headOpen(lockT.ref);lk.classList.toggle('boss',lockT.boss&&!open);lk.classList.toggle('open',open);} // tête du Dragon : braise tant que le diadème la protège, or quand la gueule s'embrase
+    
     const sc=1+Math.sin(time*7)*.06;lk.style.left=((tmp.x*.5+.5)*W)+'px';lk.style.top=((-tmp.y*.5+.5)*Hh)+'px';lk.style.transform='rotate('+(45+time*60)+'deg) scale('+sc+')';}else lk.hidden=true;}else lk.hidden=true;
   for(const w of words){if(!w.on)continue;const age=time-w.t0;if(age>.95){w.on=false;w.el.hidden=true;continue;}
     tmp.copy(w.pos).project(camera);if(tmp.z>1){w.el.style.opacity=0;continue;}
