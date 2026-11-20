@@ -161,7 +161,12 @@ const CRITIQUES={
       D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.hurt(999);r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
       D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');
-      $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');D.setDiff(1);return r;}));
+      $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
+      // difficulté : une ligne dit ce qu'elle change ; une étoile marque celles déjà vaincues
+      const info=()=>document.querySelector('#menu .diffInfo').textContent,star=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').dataset.won==='1';
+      D.setDiff(0);const i0=info();D.setDiff(2);const i2=info();r.difficulte_expliquee=/Pèlerin/.test(i0)&&/adoucis/.test(i0)&&/Archange/.test(i2)&&/résistants/.test(i2);
+      r.pas_d_etoile_avant_victoire=!star(0)&&!star(1)&&!star(2);D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.win();
+      r.victoire_etoile=await until(()=>vis('won'),15)&&star(1)&&!star(2);$('wonMenu').click();r.victoire_vers_menu=D.state==='menu'&&vis('menu')&&!vis('won');return r;}));
     await p.close();
     // téléphone en portrait : invitation à le tourner, que l'on peut ignorer
     {const {p:q,errs:e2}=await open(browser,{w:360,h:740,touch:true,play:false});const shown=()=>q.evaluate(()=>!document.getElementById('rotate').hidden);

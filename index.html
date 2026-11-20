@@ -114,6 +114,10 @@ body.touch #skills{display:none}
 /* boutons secondaires des écrans de pause et de fin, sur une ligne */
 .btnrow{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 .btnrow button{padding:10px 18px;font-size:.8rem;letter-spacing:.16em}
+.diff button[data-won]::after{content:" ★";color:var(--gold)}
+.diff button[data-won][aria-checked="true"]::after{color:#7a4a00}
+.diffInfo{font-style:italic;font-size:.95rem;max-width:30em;min-height:1.4em;text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.diffInfo b{font-family:var(--font-display);font-style:normal;font-weight:500;letter-spacing:.08em;color:var(--gold)}
 .best{font-family:var(--font-display);font-size:.8rem;letter-spacing:.16em;color:var(--gold);min-height:1em}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
@@ -163,6 +167,7 @@ body.touch #skills{display:none}
         <b>M / N</b><span>couper le son / la musique</span>
       </div>
       <div class="diff" role="radiogroup" aria-label="Difficulté"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
+      <div class="diffInfo"></div>
       <div class="best" id="best"></div>
       <div class="vol"><label for="volM">Musique</label><input type="range" id="volM" min="0" max="100"><label for="volS">Effets</label><input type="range" id="volS" min="0" max="100">
         <label for="sens">Sensibilité</label><input type="range" id="sens" class="sens" min="50" max="150" step="5"><label for="invY">Inverser haut/bas</label><input type="checkbox" id="invY" class="invY"></div>
@@ -187,6 +192,7 @@ body.touch #skills{display:none}
       <h1>L'ange est tombé</h1>
       <div class="final" id="deadScore"></div><div class="stats" id="deadStats"></div>
       <div class="diff" role="radiogroup" aria-label="Difficulté de la prochaine tentative"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
+      <div class="diffInfo"></div>
       <button id="retry" type="button">Reprendre le combat</button>
       <div class="btnrow"><button id="easier" type="button" class="ghost"></button><button id="deadMenu" type="button" class="ghost">Menu</button></div>
     </div>
@@ -890,17 +896,22 @@ function updateHint(){let k=null,html='';
   if(state==='play'){k=tutStep();if(k!=='dodge'&&TUT.hold&&time<TUT.hold.until){k=null;html=TUT.hold.html;}else if(k)html=TUT_TXT[k][touchMode?1:0];}
   if(html===TUT.shown)return;TUT.shown=html;const el=$('hint');if(html)el.innerHTML=html;el.classList.toggle('on',!!html);el.classList.toggle('urgent',k==='dodge');}
 /* ---------- difficulté, statistiques et record ---------- */
-const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75},{n:'Gardien',dmg:1,rate:1,hp:1},{n:'Archange',dmg:1.4,rate:.75,hp:1.3}];
+const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75,info:'coups adoucis, tirs ennemis plus rares, têtes moins résistantes. Pour découvrir.'},{n:'Gardien',dmg:1,rate:1,hp:1,info:'l’épreuve de référence.'},
+  {n:'Archange',dmg:1.4,rate:.75,hp:1.3,info:'coups plus durs, ennemis plus vifs, démons et têtes plus résistants.'}];
 let diffI=1;try{diffI=+(localStorage.getItem('gdc-diff')??1);if(!(diffI>=0&&diffI<=2))diffI=1;}catch(e){}
 const DF=()=>DIFF[diffI],headHp=()=>Math.round(HEAD_HP*DF().hp);
 const RUN={t0:0,maxCombo:0,kills:0,hurt:0};
+// difficultés déjà vaincues : marquées d'une étoile dans le sélecteur
+function getWon(){try{return JSON.parse(localStorage.getItem('gdc-won')||'{}')||{};}catch(e){return {};}}
+function markWon(){const w=getWon();w[diffI]=1;try{localStorage.setItem('gdc-won',JSON.stringify(w));}catch(e){}}
 function getBest(){try{return JSON.parse(localStorage.getItem('gdc-best')||'{}');}catch(e){return {};}}
 function showBest(){const b=getBest()[diffI];$('best').textContent=b?('Record '+DF().n+' : '+b.toLocaleString('fr-FR')):'';}
 function fmtT(s){s=Math.round(s);return Math.floor(s/60)+' min '+String(s%60).padStart(2,'0')+' s';}
 function endStats(id,won){$('banner').classList.remove('on');bannerT=0;$('lock').hidden=true;const t=time-RUN.t0,b=getBest(),prev=b[diffI]||0,rec=score>prev;if(rec){b[diffI]=score;try{localStorage.setItem('gdc-best',JSON.stringify(b));}catch(e){}}
   $(id).innerHTML='<b>Difficulté</b><span>'+DF().n+'</span><b>Durée</b><span>'+fmtT(t)+'</span><b>Combo max</b><span>×'+RUN.maxCombo+'</span><b>Démons terrassés</b><span>'+RUN.kills+'</span>'
     +(won?'':'<b>Têtes abattues</b><span>'+(dragon.heads.filter(h=>!h.alive).length)+' / 7</span>')+'<b>Record</b><span>'+(rec?'nouveau record !':Math.max(prev,score).toLocaleString('fr-FR'))+'</span>';showBest();}
-function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}document.querySelectorAll('.diff button').forEach(b=>b.setAttribute('aria-checked',String(+b.dataset.d===i)));showBest();
+function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}const won=getWon();document.querySelectorAll('.diff button').forEach(b=>{const d=+b.dataset.d;b.setAttribute('aria-checked',String(d===i));if(won[d]){b.dataset.won='1';b.title=DIFF[d].n+' : déjà vaincue';}});
+  document.querySelectorAll('.diffInfo').forEach(e=>e.innerHTML='<b>'+DF().n+'</b> : '+DF().info);showBest();
   const e=$('easier');e.hidden=i===0;if(i>0)e.textContent='Essayer en '+DIFF[i-1].n;} // sur l'écran de défaite : proposer la difficulté juste en dessous
 function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);score+=Math.round(100*mult());stopT=.07;word('TERRASSÉ !',d.g.position,'kill');}
 /* ---------- Jugement : orbe de lumière qui suit la cible et explose ---------- */
@@ -1005,7 +1016,7 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   holdHint('Le diadème protège chaque tête : frappez quand sa gueule s’embrase.',9);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
   if(P.hp<=0){P.hp=0;state='dead';burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('dead').hidden=false;$('cross').hidden=true;}}
-function win(){state='won';moodTarget=0;sfx.win();$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
+function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
 $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
 $('volM').value=Math.round(VOL.music*100);$('volS').value=Math.round(VOL.sfx*100);
@@ -1174,6 +1185,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
