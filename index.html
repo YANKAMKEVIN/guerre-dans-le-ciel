@@ -93,6 +93,7 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .skill{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--line);background:conic-gradient(rgba(243,197,82,.5) calc(var(--p,1) * 360deg),rgba(8,10,26,.55) 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .skill b{font-family:var(--font-display);font-size:1rem;line-height:1;color:var(--ivory)}
 .skill span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ivory)}
+.hitword.feat{font-size:clamp(2.2rem,5.5vw,3.3rem);letter-spacing:.1em;color:#fffbe9;-webkit-text-stroke:2px #3a1208;text-shadow:0 0 26px rgba(243,197,82,1),0 0 8px rgba(255,255,255,.8)}
 .skill.ready{border-color:var(--gold);box-shadow:0 0 16px rgba(243,197,82,.75)}
 .vol{display:grid;grid-template-columns:auto min(46vw,180px);gap:6px 14px;align-items:center;font-size:.9rem}
 .vol label{font-family:var(--font-display);letter-spacing:.08em;color:var(--gold);text-align:left}
@@ -956,7 +957,11 @@ function updateEnd(real){const E=END;if(!E||E.done||$(E.k).hidden)return;if(E.t<
 function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}const won=getWon();document.querySelectorAll('.diff button').forEach(b=>{const d=+b.dataset.d;b.setAttribute('aria-checked',String(d===i));if(won[d]){b.dataset.won='1';b.title=DIFF[d].n+' : déjà vaincue';}});
   document.querySelectorAll('.diffInfo').forEach(e=>e.innerHTML='<b>'+DF().n+'</b> : '+DF().info);showBest();
   const e=$('easier');e.hidden=i===0;if(i>0)e.textContent='Essayer en '+DIFF[i-1].n;} // sur l'écran de défaite : proposer la difficulté juste en dessous
-function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);stopT=.07;word('TERRASSÉ !',d.g.position,'kill');gain(Math.round(100*mult()),d.g.position);}
+// mots d'impact : variés pour un démon abattu, plus grands pour un exploit (dernier démon d'une vague, doublé ou triplé d'un seul Jugement)
+const KILL_WORDS=['TERRASSÉ !','PRÉCIPITÉ !','FOUDROYÉ !'],MULTI_WORDS=['DOUBLÉ !','TRIPLÉ !'];
+function killWord(byJudge,lastOfWave,rnd=Math.random()){if(lastOfWave)return ['VAGUE PURIFIÉE !','feat'];return [byJudge?'JUGÉ !':KILL_WORDS[Math.min(KILL_WORDS.length-1,Math.floor(rnd*KILL_WORDS.length))],'kill'];}
+const multiWord=n=>n<2?null:MULTI_WORDS[n-2]||'LÉGION BALAYÉE !';
+function killDemon(i,byJudge){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);stopT=.07;{const [w,c]=killWord(byJudge,phase==='fight'&&!demons.length&&!reinf&&!pending);word(w,d.g.position,c);}gain(Math.round(100*mult()),d.g.position);}
 /* ---------- Jugement : orbe de lumière qui suit la cible et explose ---------- */
 const J={g:new THREE.Group(),v:new V(),life:0,on:false};
 J.g.add(new THREE.Mesh(new THREE.SphereGeometry(5,16,12),new THREE.MeshBasicMaterial({color:new THREE.Color(8,6,2.5),fog:false})));J.g.add(glow(0xffe08a,70,.9));J.g.visible=false;scene.add(J.g);
@@ -966,7 +971,8 @@ function tryJudgement(){if(state!=='play'||P.jCool>0||J.on)return;learn('judge')
   sfx.judge();}
 function explodeJ(){const p=J.g.position;J.on=false;J.g.visible=false;
   burst(p,9,7,3,150,260,1.4);burst(p,8,5,1.5,80,120,2);ring.visible=true;ring.position.copy(p);ringT=0;shake=reduced?0:.45;stopT=.09;sfx.judgeBoom();
-  for(let i=demons.length-1;i>=0;i--)if(demons[i].g.position.distanceTo(p)<120){registerHit();killDemon(i);}
+  let nk=0;for(let i=demons.length-1;i>=0;i--)if(demons[i].g.position.distanceTo(p)<120){registerHit();killDemon(i,true);nk++;}
+  if(multiWord(nk))word(multiWord(nk),p,'feat');
   for(const f of fires)if(f.life>0&&f.m.position.distanceTo(p)<170){f.life=0;f.m.visible=false;}
   if(dragon.alive&&dragon.dying<0){let any=false;for(const h of dragon.heads)if(h.alive&&h.g.position.distanceTo(p)<150){any=true;hitHead(h,16,h.g.position,true);}
     if(any)word('JUGEMENT !',p,'crit');}}
@@ -1001,7 +1007,7 @@ function hitHead(h,dmg,p,crit){if(!h.alive)return;h.hp-=dmg;h.flash=1;registerHi
 function killHead(h){h.alive=false;h.hp=0;h.g.visible=false;burst(h.g.position,9,3,.6,160,200,1.8);burst(h.g.position,8,6,2,60,90,1.2);
   for(const n of h.neck){burst(n.g.position,8,2,.4,14,80,1);n.g.visible=false;}
   sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;const n=headsLeft();bossLabel();
-  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'kill');gain(Math.round(600*mult()),h.g.position);
+  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'feat');gain(Math.round(600*mult()),h.g.position);
   if(!n){dragon.hp=0;checkDragonDown();}}
 function updateHeads(dt,rage){
   const J0=dragon.head.position;hF.copy(dragon.v);if(hF.lengthSq()<1)hF.set(0,0,1);hF.normalize();hR.crossVectors(hF,UP).normalize();hU.crossVectors(hR,hF).normalize();
@@ -1234,6 +1240,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

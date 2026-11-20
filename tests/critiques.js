@@ -116,6 +116,9 @@ const CRITIQUES={
     // combo : jauge de temps qui se vide, palier de multiplicateur mis en avant, points gagnés près de l'ennemi, score formaté
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),bar=$('comboBar'),w=()=>parseFloat(bar.firstElementChild.style.width);
       const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      // mots d'impact : variés pour un démon, réservés et plus grands pour les exploits
+      {const ws=new Set([0,.4,.99].map(x=>D.killWord(false,false,x)[0]));r.mots_varies=ws.size===3&&D.killWord(false,false,.1)[1]==='kill'&&D.killWord(true,false)[0]==='JUGÉ !';
+       r.mots_d_exploit=D.killWord(false,true)[1]==='feat'&&D.multiWord(1)===null&&D.multiWord(2)==='DOUBLÉ !'&&D.multiWord(3)==='TRIPLÉ !'&&!!D.multiWord(5);}
       r.score_formate=D.fmtN(12400).replace(/\s/g,' ')==='12 400'&&D.fmtN(950)==='950';
       await until(()=>D.combo===0,4);r.jauge_cachee_sans_combo=!bar.classList.contains('on');
       for(let i=0;i<4;i++)D.hit();r.jauge_combo=await until(()=>bar.classList.contains('on')&&w()>60&&/×4/.test($('combo').textContent),3);const w0=w();
