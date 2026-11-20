@@ -139,6 +139,15 @@ const CRITIQUES={
       D.judge();D.dodge();r.tactile_recharge_visible=await until(()=>!rdy(tJ)&&!rdy(tE)&&+tJ.style.getPropertyValue('--p')<.5,3);
       P.jCool=.05;P.dodgeCool=.05;r.tactile_eclat_au_retour=await until(()=>rdy(tJ)&&rdy(tE),4)&&tJ.classList.contains('flash')&&tE.classList.contains('flash');
       return r;}));
+    // pause et écrans de fin : retour au menu, rappel des commandes, difficulté ajustable après une défaite
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),vis=id=>!$(id).hidden;
+      const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
+      window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&$('pauseKeys').children.length>=6;
+      $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
+      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.hurt(999);r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
+      D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');
+      $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');D.setDiff(1);return r;}));
     await p.close();const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);
