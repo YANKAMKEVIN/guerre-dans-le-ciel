@@ -59,6 +59,8 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 @keyframes hintPulse{to{transform:scale(1.07)}}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,var(--veil) 0%,rgba(8,10,26,.2) 75%);padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
 #menu{background:radial-gradient(ellipse at center,rgba(8,10,26,.8) 0%,rgba(8,10,26,.5) 45%,rgba(8,10,26,.15) 80%),url(keyart.webp) center/cover no-repeat var(--night)}
+.screen.fade{animation:screenIn 1s ease both}
+@keyframes screenIn{from{opacity:0}}
 .panel{margin-block:auto;max-width:36rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
 .eyebrow{font-family:var(--font-display);font-size:.78rem;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
 h1{font-family:var(--font-display);font-weight:900;font-size:clamp(2.1rem,8vw,4.4rem);line-height:1.02;letter-spacing:.06em;margin:0;text-wrap:balance;text-shadow:0 0 34px rgba(243,197,82,.55),0 3px 14px rgba(0,0,0,.6)}
@@ -129,7 +131,7 @@ body.touch #skills{display:none}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#combo.bump,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#combo.bump,.screen.fade,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
@@ -882,6 +884,8 @@ const fwd=new V(0,0,-1),tmp=new V(),tmp2=new V(),tmp3=new V();
 let state='menu',score=0,wave=0,pending=null,phase='idle',time=0,shake=0,hurt=0,bannerT=0;
 const ROMAN=['I','II','III'];let stopT=0,combo=0,comboT=0,lockT=null,reinf=0;
 const J_COOL=6,DODGE_T=.45,DODGE_COOL=1.6,LOW_HP=30;let heartT=0;
+/* chute de l'ange : temps ralenti une seconde, plumes de lumière, caméra qui s'éloigne, puis le panneau monte en fondu */
+const DEATH_PANEL=reduced?.6:2.8;let deadT=0;
 const lowLight=()=>state==='play'&&P.hp>0&&P.hp<LOW_HP;
 /* ---------- mots d'impact ---------- */
 const words=[];for(let i=0;i<14;i++){const el=document.createElement('div');el.className='hitword';el.hidden=true;$('words').appendChild(el);words.push({el,pos:new V(),t0:-9,on:false});}
@@ -1006,7 +1010,7 @@ function checkDragonDown(){if(dragon.hp<=0&&dragon.dying<0){dragon.hp=0;dragon.d
 function banner(t,s,d=3.2){$('bTitle').textContent=t;$('bSub').textContent=s||'';$('banner').classList.add('on');bannerT=d;}
 function clearField(){for(const d of demons)scene.remove(d.g);demons.length=0;for(const f of fires){f.life=0;f.m.visible=false;}for(const b of bolts){b.life=0;b.m.visible=false;}
   dragon.alive=false;dragon.dying=-1;dragon.root.visible=false;$('boss').hidden=true;}
-function startGame(){RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
+function startGame(){deadT=0;RUN.t0=time;RUN.maxCombo=0;RUN.kills=0;RUN.hurt=0;
   initAudio();
   clearField();P.pos.set(0,320,0);P.yaw=0;P.pitch=0;P.hp=100;P.sinceHit=9;P.jCool=0;P.dodgeT=0;P.dodgeCool=0;combo=0;comboT=0;lockT=null;J.on=false;J.g.visible=false;score=0;wave=0;moodTarget=0;state='play';
   $('menu').hidden=$('dead').hidden=$('won').hidden=true;$('hud').hidden=false;$('cross').hidden=false;TUT.hold=null;nextWave();
@@ -1027,7 +1031,7 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();
   holdHint('Le diadème protège chaque tête : frappez quand sa gueule s’embrase.',9);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
-  if(P.hp<=0){P.hp=0;state='dead';burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('dead').hidden=false;$('cross').hidden=true;}}
+  if(P.hp<=0){P.hp=0;state='dead';deadT=0;burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('cross').hidden=true;}} // le panneau de défaite s'affiche après la chute (voir la boucle)
 function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
 $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
@@ -1177,7 +1181,11 @@ addEventListener('resize',resize);new ResizeObserver(resize).observe(stage);resi
 /* ---------- boucle ---------- */
 const camPos=new V(0,270,30);let frameMs=16;let last=performance.now();
 function frame(now){
-  let dt=clamp((now-last)/1000,0,.05);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}time+=dt;
+  const real=clamp((now-last)/1000,0,1);let dt=Math.min(.05,real);last=now;if(paused)dt=0;if(stopT>0){stopT-=dt;dt*=.06;}
+  if(state==='dead'){const before=deadT;deadT+=real;if(before<DEATH_PANEL&&deadT>=DEATH_PANEL){$('dead').classList.add('fade');$('dead').hidden=false;}
+    if(!reduced){dt*=deadT<1?.28:lerp(.28,1,clamp(deadT-1,0,1)); // une seconde de ralenti, puis le temps reprend
+      if(angel.visible&&Math.random()<.6)burst(P.pos,7,6.2,4.2,2,26,1.8);}} // plumes de lumière
+  time+=dt;
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
   updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
@@ -1186,7 +1194,8 @@ function frame(now){
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)$('banner').classList.remove('on');}
   hurt=Math.max(0,hurt-dt*1.6);shake=Math.max(0,shake-dt*1.5);
   // caméra de poursuite
-  tmp.copy(P.pos).addScaledVector(fwd,-30);tmp.y+=13;camPos.lerp(tmp,1-Math.exp(-dt*6));
+  {const pull=state==='dead'&&!reduced?smooth01(0,2.6,deadT):0; // à la mort de l'ange, la caméra s'éloigne et s'élève
+   tmp.copy(P.pos).addScaledVector(fwd,-30-pull*95);tmp.y+=13+pull*38;camPos.lerp(tmp,1-Math.exp(-(state==='dead'?Math.min(.05,real):dt)*6));}
   camera.position.copy(camPos);if(shake>0){camera.position.x+=rand(-1,1)*shake*3;camera.position.y+=rand(-1,1)*shake*3;}
   tmp.copy(P.pos).addScaledVector(fwd,40);camera.lookAt(tmp);camera.rotateZ(P.roll*.5);
   const fov=lerp(62,76,clamp((P.speed-112)/83,0,1));if(Math.abs(fov-camera.fov)>.05){camera.fov=fov;camera.updateProjectionMatrix();}
@@ -1198,6 +1207,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},hit(){registerHit();},fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

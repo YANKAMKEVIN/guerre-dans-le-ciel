@@ -168,7 +168,8 @@ const CRITIQUES={
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
       window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&$('pauseKeys').children.length>=6;
       $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
-      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.hurt(999);r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      r.chute_mise_en_scene=sec&&$('dead').classList.contains('fade')&&D.camera.position.distanceTo(D.P.pos)>70; // le panneau attend la chute, la caméra s'est éloignée
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
       D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');
       $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
