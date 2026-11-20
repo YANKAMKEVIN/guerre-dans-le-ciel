@@ -168,10 +168,16 @@ const CRITIQUES={
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
       window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}));r.pause_rappel_commandes=await until(()=>vis('pause'),3)&&$('pauseKeys').children.length>=6;
       $('pauseMenu').click();r.pause_vers_menu=D.state==='menu'&&vis('menu')&&!vis('pause')&&$('hud').hidden&&D.demons.length===0&&!D.dragon.alive;
-      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
+      D.setDiff(1);$('play').click();await until(()=>D.state==='play',3);D.gain(1234);D.hurt(999);const sec=!vis('dead')&&D.state==='dead';r.defaite_difficulte=await until(()=>vis('dead'),15)&&!!document.querySelector('#dead .diff')&&vis('easier')&&/Pèlerin/.test($('easier').textContent);
       r.chute_mise_en_scene=sec&&$('dead').classList.contains('fade')&&D.camera.position.distanceTo(D.P.pos)>70; // le panneau attend la chute, la caméra s'est éloignée
+      // fin de partie : le score défile jusqu'à sa valeur, les lignes se révèlent, puis le rang ; sceau doré pour un record
+      r.rangs=D.rankOf(false,1000,100)===0&&D.rankOf(false,30000,100)===1&&D.rankOf(true,10000,100)===1&&D.rankOf(true,60000,61)===1&&D.rankOf(true,60000,40)===2&&D.rankOf(false,90000,0)===1;
+      const num=()=>document.querySelector('#deadScore .num').textContent,rows=[...$('deadStats').children],n0=rows.filter(e=>e.classList.contains('in')).length;
+      r.decompte_progressif=n0<rows.length&&!$('deadRank').classList.contains('in');
+      r.decompte_termine=await until(()=>$('deadRank').classList.contains('in'),15)&&num()===D.fmtN(1234)&&rows.every(e=>e.classList.contains('in'))&&/Ange/.test($('deadRank').textContent)&&/Chérubin/.test($('deadRank').textContent);
+      r.sceau_du_record=!!document.querySelector('#deadScore .seal.in');
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
-      D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');
+      D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');r.pas_de_sceau_sans_record=!document.querySelector('#deadScore .seal');
       $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');
       // difficulté : une ligne dit ce qu'elle change ; une étoile marque celles déjà vaincues
       const info=()=>document.querySelector('#menu .diffInfo').textContent,star=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').dataset.won==='1';

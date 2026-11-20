@@ -130,8 +130,19 @@ body.touch #skills{display:none}
 .best{font-family:var(--font-display);font-size:.8rem;letter-spacing:.16em;color:var(--gold);min-height:1em}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
+/* décompte de fin : lignes révélées une à une, rang frappé comme un sceau, sceau doré pour un record */
+.stats > *{opacity:0;transition:opacity .25s}
+.stats > .in{opacity:1}
+.rank{opacity:0;transform:scale(1.7);transition:opacity .3s,transform .4s cubic-bezier(.2,1.5,.4,1)}
+.rank.in{opacity:1;transform:none}
+.rank span{display:block;font-family:var(--font-display);font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ivory)}
+.rank b{display:block;font-family:var(--font-display);font-weight:900;font-size:1.9rem;letter-spacing:.2em;color:var(--gold);text-shadow:0 0 22px rgba(243,197,82,.7),0 2px 8px rgba(0,0,0,.6)}
+.rank small{display:block;font-style:italic;font-size:.9rem;max-width:30em;text-wrap:balance}
+.seal{display:inline-grid;place-items:center;vertical-align:middle;width:62px;height:62px;margin-left:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6d2,var(--gold) 55%,#a86a00);border:2px dashed rgba(90,56,4,.7);color:#3a2204;font-size:.56rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:0;transform:rotate(-12deg) scale(2.2);transition:opacity .25s,transform .35s cubic-bezier(.2,1.5,.4,1)}
+.seal.in{opacity:1;transform:rotate(-12deg);animation:sealShine 1.4s ease-in-out .4s infinite alternate}
+@keyframes sealShine{from{box-shadow:0 0 10px rgba(243,197,82,.5)}to{box-shadow:0 0 30px 6px rgba(255,246,210,.95)}}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#combo.bump,.screen.fade,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown,.stats > *,.rank,.seal{transition:none}#hint.urgent,#combo.bump,.screen.fade,.seal.in,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
@@ -199,7 +210,7 @@ body.touch #skills{display:none}
     <div class="panel">
       <div class="eyebrow">La lumière vacille</div>
       <h1>L'ange est tombé</h1>
-      <div class="final" id="deadScore"></div><div class="stats" id="deadStats"></div>
+      <div class="final" id="deadScore"></div><div class="stats" id="deadStats"></div><div class="rank" id="deadRank"></div>
       <div class="diff" role="radiogroup" aria-label="Difficulté de la prochaine tentative"><button type="button" data-d="0">Pèlerin</button><button type="button" data-d="1">Gardien</button><button type="button" data-d="2">Archange</button></div>
       <div class="diffInfo"></div>
       <button id="retry" type="button">Reprendre le combat</button>
@@ -211,7 +222,7 @@ body.touch #skills{display:none}
       <div class="eyebrow">Victoire</div>
       <h1>Le Dragon est précipité</h1>
       <p class="verse">« Et il fut précipité, le grand dragon, le serpent ancien, appelé le diable et Satan, celui qui séduit toute la terre. »<cite>Apocalypse 12:9</cite></p>
-      <div class="final" id="wonScore"></div><div class="stats" id="wonStats"></div>
+      <div class="final" id="wonScore"></div><div class="stats" id="wonStats"></div><div class="rank" id="wonRank"></div>
       <button id="again" type="button">Rejouer</button>
       <div class="btnrow"><button id="wonMenu" type="button" class="ghost">Menu</button></div>
     </div>
@@ -830,6 +841,8 @@ const sfx={
     const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=750;const og=ac.createGain();og.gain.setValueAtTime(0,t);og.gain.linearRampToValueAtTime(.24,t+.2);og.gain.setTargetAtTime(0,t+1.3,.3);
     o.connect(lp).connect(og).connect(AU.fx);o.start(t);lfo.start(t);o.stop(t+2.8);lfo.stop(t+2.8);}),
   heart:S(t=>{vDrum(t,AU.fx,.2,46);vDrum(t+.2,AU.fx,.13,42);}),
+  tick:S((t,i)=>vBell(79+i*2,t,AU.fx,.04)),
+  rank:S((t,rec)=>{for(const m of [62,69,74])vChoir(m,t,.9,AU.fx,.03);vBell(86,t,AU.fx,.06);if(rec){vBell(90,t+.12,AU.fx,.05);vBell(93,t+.24,AU.fx,.05);}}),
   tier:S((t,n)=>{vBell(74+n*3,t,AU.fx,.06);vBell(81+n*3,t+.07,AU.fx,.045);}),
   hurt:S(t=>{vNoise(t,.28,'lowpass',1000,140,1,.2,AU.fx);tone(210,70,.3,'square',.05);}),
   fire:S((t,p)=>{const v=distVol(p);vNoise(t,.5,'lowpass',2400,280,.8,.09*v,AU.fx);tone(160,70,.35,'sawtooth',.025*v);}),
@@ -923,9 +936,23 @@ function markWon(){const w=getWon();w[diffI]=1;try{localStorage.setItem('gdc-won
 function getBest(){try{return JSON.parse(localStorage.getItem('gdc-best')||'{}');}catch(e){return {};}}
 function showBest(){const b=getBest()[diffI];$('best').textContent=b?('Record '+DF().n+' : '+b.toLocaleString('fr-FR')):'';}
 function fmtT(s){s=Math.round(s);return Math.floor(s/60)+' min '+String(s%60).padStart(2,'0')+' s';}
-function endStats(id,won){$('banner').classList.remove('on');bannerT=0;$('lock').hidden=true;const t=time-RUN.t0,b=getBest(),prev=b[diffI]||0,rec=score>prev;if(rec){b[diffI]=score;try{localStorage.setItem('gdc-best',JSON.stringify(b));}catch(e){}}
-  $(id).innerHTML='<b>Difficulté</b><span>'+DF().n+'</span><b>Durée</b><span>'+fmtT(t)+'</span><b>Combo max</b><span>×'+RUN.maxCombo+'</span><b>Démons terrassés</b><span>'+RUN.kills+'</span>'
-    +(won?'':'<b>Têtes abattues</b><span>'+(dragon.heads.filter(h=>!h.alive).length)+' / 7</span>')+'<b>Record</b><span>'+(rec?'nouveau record !':Math.max(prev,score).toLocaleString('fr-FR'))+'</span>';showBest();}
+// rang de fin de partie : selon l'issue, le score et la Lumière perdue
+const RANKS=['Ange','Chérubin','Séraphin'],RANK_SCORE=[25000,50000],RANK_HURT=60;
+function rankOf(won,sc,lost){return won&&sc>=RANK_SCORE[1]&&lost<=RANK_HURT?2:(won||sc>=RANK_SCORE[0])?1:0;}
+const rankNext=r=>r===2?'Le plus haut rang.':r===1?'Séraphin : vaincre le Dragon avec '+fmtN(RANK_SCORE[1])+' points en perdant au plus '+RANK_HURT+' de Lumière.':'Chérubin : vaincre le Dragon, ou atteindre '+fmtN(RANK_SCORE[0])+' points.';
+let END=null;
+function endStats(k,won){$('banner').classList.remove('on');bannerT=0;$('lock').hidden=true;const t=time-RUN.t0,b=getBest(),prev=b[diffI]||0,rec=score>prev;if(rec){b[diffI]=score;try{localStorage.setItem('gdc-best',JSON.stringify(b));}catch(e){}}
+  $(k+'Score').innerHTML='Score <span class="num">0</span>'+(rec?'<span class="seal">Record</span>':'');
+  $(k+'Stats').innerHTML='<b>Difficulté</b><span>'+DF().n+'</span><b>Durée</b><span>'+fmtT(t)+'</span><b>Combo max</b><span>×'+RUN.maxCombo+'</span><b>Démons terrassés</b><span>'+RUN.kills+'</span>'
+    +(won?'':'<b>Têtes abattues</b><span>'+(dragon.heads.filter(h=>!h.alive).length)+' / 7</span>')+'<b>Record</b><span>'+(rec?'nouveau record !':fmtN(Math.max(prev,score)))+'</span>';
+  const r=rankOf(won,score,RUN.hurt),rk=$(k+'Rank');rk.className='rank';rk.innerHTML='<span>Rang</span><b>'+RANKS[r]+'</b><small>'+rankNext(r)+'</small>';
+  END={k,score,t:-1,step:-1,rows:[...$(k+'Stats').children],done:false};showBest();}
+// décompte : le score défile, les lignes se révèlent une à une avec un tintement, puis le rang et le sceau du record
+function updateEnd(real){const E=END;if(!E||E.done||$(E.k).hidden)return;if(E.t<0)E.t=0;else E.t+=real;if(reduced)E.t=99;
+  const num=$(E.k+'Score').querySelector('.num'),u=clamp(E.t/1.1,0,1);num.textContent=fmtN(E.score*(1-Math.pow(1-u,3)));
+  const n=E.rows.length/2,step=Math.min(n,Math.floor((E.t-.7)/.17));
+  while(E.step<step){E.step++;if(E.step<n){E.rows[E.step*2].classList.add('in');E.rows[E.step*2+1].classList.add('in');if(!reduced)sfx.tick(E.step);}}
+  if(E.t>.7+n*.17+.3){E.done=true;$(E.k+'Rank').classList.add('in');const seal=$(E.k+'Score').querySelector('.seal');if(seal)seal.classList.add('in');if(!reduced)sfx.rank(!!seal);}}
 function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}const won=getWon();document.querySelectorAll('.diff button').forEach(b=>{const d=+b.dataset.d;b.setAttribute('aria-checked',String(d===i));if(won[d]){b.dataset.won='1';b.title=DIFF[d].n+' : déjà vaincue';}});
   document.querySelectorAll('.diffInfo').forEach(e=>e.innerHTML='<b>'+DF().n+'</b> : '+DF().info);showBest();
   const e=$('easier');e.hidden=i===0;if(i>0)e.textContent='Essayer en '+DIFF[i-1].n;} // sur l'écran de défaite : proposer la difficulté juste en dessous
@@ -1031,8 +1058,8 @@ function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dr
   dragon.max=NHEAD*headHp();dragon.hp=dragon.max;bossLabel();
   holdHint('Le diadème protège chaque tête : frappez quand sa gueule s’embrase.',9);phase='boss';sfx.roar();}
 function damagePlayer(d){if(state!=='play'||P.dodgeT>0)return;d*=DF().dmg;RUN.hurt+=d;P.hp-=d;P.sinceHit=0;hurt=1;shake=reduced?0:.5;sfx.hurt();
-  if(P.hp<=0){P.hp=0;state='dead';deadT=0;burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();$('deadScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('deadStats',false);$('cross').hidden=true;}} // le panneau de défaite s'affiche après la chute (voir la boucle)
-function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);$('wonScore').textContent='Score '+score.toLocaleString('fr-FR');endStats('wonStats',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
+  if(P.hp<=0){P.hp=0;state='dead';deadT=0;burst(P.pos,5,4,2,90,90,1.6);sfx.boom();sfx.lose();endStats('dead',false);$('cross').hidden=true;}} // le panneau de défaite s'affiche après la chute (voir la boucle)
+function win(){state='won';moodTarget=0;sfx.win();markWon();setDiff(diffI);endStats('won',true);$('won').hidden=false;$('cross').hidden=true;$('boss').hidden=true;}
 $('play').onclick=$('retry').onclick=$('again').onclick=startGame;
 document.querySelectorAll('.diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.d));setDiff(diffI);
 $('volM').value=Math.round(VOL.music*100);$('volS').value=Math.round(VOL.sfx*100);
@@ -1185,7 +1212,7 @@ function frame(now){
   if(state==='dead'){const before=deadT;deadT+=real;if(before<DEATH_PANEL&&deadT>=DEATH_PANEL){$('dead').classList.add('fade');$('dead').hidden=false;}
     if(!reduced){dt*=deadT<1?.28:lerp(.28,1,clamp(deadT-1,0,1)); // une seconde de ralenti, puis le temps reprend
       if(angel.visible&&Math.random()<.6)burst(P.pos,7,6.2,4.2,2,26,1.8);}} // plumes de lumière
-  time+=dt;
+  time+=dt;updateEnd(real);
   mood=lerp(mood,moodTarget,1-Math.exp(-dt*.7));applyMood();
   updateLock();comboT-=dt;if(comboT<=0)combo=0;updatePlayer(dt);updateJudgement(dt);updateBolts(dt);updateFires(dt);updateDemons(dt);updateDragon(dt);updateDragonInstances();updateParticles(dt);
   if(state==='play'&&pending){pending.t-=dt;if(pending.t<=0){const n=pending.n;pending=null;if(n>0)spawnDemons(n);else if(n===0)spawnDragon();else win();}}
@@ -1207,6 +1234,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
