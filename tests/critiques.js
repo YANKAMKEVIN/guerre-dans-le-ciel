@@ -10,8 +10,8 @@ const THREE_DIR=path.join(__dirname,'node_modules','three');
 const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}html,body{height:100%}</style></head><body>'
   +fs.readFileSync(path.join(ROOT,'index.html'),'utf8')+'</body></html>';
 
-async function open(browser,{w=480,h=270,diff=1}={}){
-  const p=await browser.newPage({viewport:{width:w,height:h}});const errs=[];
+async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
+  const p=await browser.newPage({viewport:{width:w,height:h},hasTouch:touch,isMobile:touch});const errs=[];
   p.on('pageerror',e=>errs.push(e.message));
   p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|GPU stall/.test(m.text()))errs.push(m.text().slice(0,200));});
   await p.route('https://cdn.jsdelivr.net/npm/three@0.160.0/**',r=>r.fulfill({body:fs.readFileSync(path.join(THREE_DIR,r.request().url().split('three@0.160.0/')[1])),contentType:'application/javascript'}));
@@ -21,7 +21,7 @@ async function open(browser,{w=480,h=270,diff=1}={}){
   await p.goto('http://jeu.local/');
   await p.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:90000});
   await p.evaluate(d=>__dbg.setDiff(d),diff);
-  await p.click('#play');
+  if(play)await p.click('#play');
   return {p,errs};
 }
 
@@ -139,6 +139,14 @@ const CRITIQUES={
       D.judge();D.dodge();r.tactile_recharge_visible=await until(()=>!rdy(tJ)&&!rdy(tE)&&+tJ.style.getPropertyValue('--p')<.5,3);
       P.jCool=.05;P.dodgeCool=.05;r.tactile_eclat_au_retour=await until(()=>rdy(tJ)&&rdy(tE),4)&&tJ.classList.contains('flash')&&tE.classList.contains('flash');
       return r;}));
+    // réglages de pilotage : sensibilité et inversion haut/bas, appliqués au vol et mémorisés
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id);
+      const turn=async(x,y,k)=>{D.input(0,0,false);const t0=D.time;while(D.time-t0<.4)await wait(20);P.pitch=0;const a=P[k],t1=D.time;D.input(x,y,false);while(D.time-t1<.5)await wait(20);D.input(0,0,false);return P[k]-a;};
+      const set=(id,v)=>{const e=$(id);if(e.type==='checkbox'){if(e.checked!==v)e.click();}else{e.value=v;e.dispatchEvent(new Event('input'));}};
+      P.pos.y=600;set('sens2',100);set('invY2',false);const up=await turn(0,-.6,'pitch');set('invY2',true);const inv=await turn(0,-.6,'pitch');set('invY2',false);
+      r.inversion_haut_bas=up>.05&&inv<-.05&&$('invY').checked===false;
+      const y1=Math.abs(await turn(.5,0,'yaw'));set('sens',50);const y2=Math.abs(await turn(.5,0,'yaw'));
+      r.sensibilite=y2<y1*.75&&y2>y1*.3&&$('sens2').value==='50'&&JSON.parse(localStorage.getItem('gdc-set')).sens===.5;set('sens',100);P.pitch=0;return r;}));
     // pause et écrans de fin : retour au menu, rappel des commandes, difficulté ajustable après une défaite
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),vis=id=>!$(id).hidden;
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
@@ -148,7 +156,12 @@ const CRITIQUES={
       $('easier').click();r.defaite_essayer_plus_facile=await until(()=>D.state==='play',3)&&chk(0)&&!vis('dead');
       D.hurt(999);r.defaite_pelerin_sans_suggestion=await until(()=>vis('dead'),15)&&!vis('easier');
       $('deadMenu').click();r.defaite_vers_menu=D.state==='menu'&&vis('menu')&&!vis('dead');D.setDiff(1);return r;}));
-    await p.close();const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
+    await p.close();
+    // téléphone en portrait : invitation à le tourner, que l'on peut ignorer
+    {const {p:q,errs:e2}=await open(browser,{w:360,h:740,touch:true,play:false});const shown=()=>q.evaluate(()=>!document.getElementById('rotate').hidden);
+      ok.portrait_invitation=await shown();await q.setViewportSize({width:740,height:360});await q.waitForTimeout(400);ok.paysage_sans_invitation=!(await shown());
+      await q.setViewportSize({width:360,height:740});await q.waitForTimeout(400);const back=await shown();await q.tap('#rotateSkip');ok.portrait_continuer_ainsi=back&&!(await shown());errs.push(...e2);await q.close();}
+    const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);
     const r=await p.evaluate(async()=>{const A=__dbg.AU,ac=__dbg.ac;if(!A)return {erreur:'audio non initialisé'};const an=ac.createAnalyser();an.fftSize=2048;A.master.connect(an);const b=new Float32Array(2048);let peak=0,sum=0,n=0;
