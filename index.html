@@ -48,6 +48,9 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 #cross{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:1.5px solid rgba(247,237,211,.8);border-radius:50%;box-shadow:0 0 10px rgba(243,197,82,.6)}
 #cross::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:var(--gold);border-radius:50%}
 .arrow{position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--ember);filter:drop-shadow(0 0 6px rgba(229,72,44,.9))}
+.arrow.boss{width:30px;height:30px;border:0;background:var(--ember);clip-path:polygon(0 0,100% 50%,0 100%,32% 50%);filter:drop-shadow(0 0 2px var(--gold)) drop-shadow(0 0 8px rgba(229,72,44,.95))}
+/* boule de feu qui arrive hors champ : arc orange du côté d'où elle vient, plus vif à mesure qu'elle approche */
+.farc{position:absolute;width:46px;height:170px;margin:-85px 0 0 -23px;border-radius:50%;border-right:7px solid #ffa23a;filter:drop-shadow(0 0 12px rgba(255,130,30,.95));pointer-events:none}
 #hurt{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(190,20,10,.75) 100%);opacity:0}
 #hint{margin-top:6px;align-self:center;text-align:center;font-size:1.05rem;padding:6px 18px;background:rgba(8,10,26,.5);border:1px solid var(--line);text-shadow:0 1px 8px rgba(0,0,0,.85);opacity:0;transition:opacity .35s}
 #hint.on{opacity:1}
@@ -1110,6 +1113,8 @@ function updateDragon(dt){
 
 /* ---------- interface ---------- */
 const arrows=[];for(let i=0;i<10;i++){const a=document.createElement('div');a.className='arrow';a.hidden=true;$('arrows').appendChild(a);arrows.push(a);}
+const farcs=[],FARC_D=340;for(let i=0;i<4;i++){const a=document.createElement('div');a.className='farc';a.hidden=true;$('arrows').appendChild(a);farcs.push(a);}
+const threats=[];
 let W=1,Hh=1;
 // recharge d'une compétence : anneau (--p), état prêt, éclat à l'instant où elle redevient disponible
 function cdUi(el,p,ready){el.style.setProperty('--p',p.toFixed(3));const was=el.classList.contains('ready');if(ready!==was){el.classList.toggle('ready',ready);el.classList.toggle('flash',ready);}}
@@ -1128,11 +1133,19 @@ function updateHud(){
     const pop=age<.12?.6+age/.12*.6:1.2-Math.min(.2,(age-.12)*.5);
     w.el.style.opacity=age<.6?1:1-(age-.6)/.35;w.el.style.transform='translate('+((tmp.x*.5+.5)*W+w.dx)+'px,'+((-tmp.y*.5+.5)*Hh-age*70+(w.dy||0))+'px) translate(-50%,-50%) scale('+pop+')';}$('hurt').style.opacity=hurt*.9;
   tmp.copy(P.pos).addScaledVector(fwd,420).project(camera);const c=$('cross');c.style.left=((tmp.x*.5+.5)*W)+'px';c.style.top=((-tmp.y*.5+.5)*Hh)+'px';
-  let n=0;const mark=p=>{if(n>=arrows.length)return;tmp.copy(p).project(camera);let x=tmp.x,y=tmp.y;const behind=tmp.z>1;if(behind){x=-x;y=-y;}
-    if(!behind&&Math.abs(x)<.93&&Math.abs(y)<.9)return;const m=Math.max(Math.abs(x)/.93,Math.abs(y)/.88,.001);x/=m;y/=m;
-    const a=arrows[n++];a.hidden=false;a.style.left=((x*.5+.5)*W)+'px';a.style.top=((-y*.5+.5)*Hh)+'px';a.style.transform='translate(-50%,-50%) rotate('+Math.atan2(-y,x)+'rad)';};
-  if(state==='play'){for(const d of demons)mark(d.g.position);if(dragon.alive)mark(dragon.head.position);}
+  // bord d'écran : direction d'un point hors champ (null s'il est visible)
+  const edge=p=>{tmp.copy(p).project(camera);let x=tmp.x,y=tmp.y;const behind=tmp.z>1;if(behind){x=-x;y=-y;}
+    if(!behind&&Math.abs(x)<.93&&Math.abs(y)<.9)return null;const m=Math.max(Math.abs(x)/.93,Math.abs(y)/.88,.001);return [x/m,y/m];};
+  let n=0;const mark=(p,boss)=>{if(n>=arrows.length)return;const e=edge(p);if(!e)return;const [x,y]=e;
+    const a=arrows[n++];a.hidden=false;a.classList.toggle('boss',!!boss); // le Dragon a sa propre flèche, en fer de lance
+    a.style.left=((x*.5+.5)*W)+'px';a.style.top=((-y*.5+.5)*Hh)+'px';a.style.transform='translate(-50%,-50%) rotate('+Math.atan2(-y,x)+'rad)';};
+  if(state==='play'){for(const d of demons)mark(d.g.position);if(dragon.alive)mark(dragon.head.position,true);}
   for(let i=n;i<arrows.length;i++)arrows[i].hidden=true;
+  // boules de feu proches qui foncent sur l'ange sans être à l'écran
+  threats.length=0;if(state==='play')for(const f of fires){if(f.life<=0)continue;tmp2.copy(P.pos).sub(f.m.position);const d=tmp2.length();if(d>FARC_D||tmp2.dot(f.v)<=0)continue;const e=edge(f.m.position);if(e)threats.push({d,e});}
+  threats.sort((a,b)=>a.d-b.d);
+  farcs.forEach((a,i)=>{const t=threats[i];a.hidden=!t;if(!t)return;const k=1-t.d/FARC_D,[x,y]=t.e;a.style.left=((x*.9*.5+.5)*W)+'px';a.style.top=((-y*.9*.5+.5)*Hh)+'px';a.style.opacity=(.3+.7*k).toFixed(2);
+    a.style.transform='rotate('+Math.atan2(-y,x)+'rad) scale('+(.75+.6*k).toFixed(2)+')';});
 }
 function resize(){W=stage.clientWidth||1;Hh=stage.clientHeight||1;renderer.setSize(W,Hh,false);composer.setSize(W,Hh);camera.aspect=W/Hh;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);new ResizeObserver(resize).observe(stage);resize();

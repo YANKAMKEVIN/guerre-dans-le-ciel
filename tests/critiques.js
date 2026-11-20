@@ -11,7 +11,7 @@ const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewpor
   +fs.readFileSync(path.join(ROOT,'index.html'),'utf8')+'</body></html>';
 
 async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
-  const p=await browser.newPage({viewport:{width:w,height:h},hasTouch:touch,isMobile:touch});const errs=[];
+  const p=await browser.newPage({viewport:{width:w,height:h},hasTouch:touch,isMobile:touch});p.setDefaultTimeout(120000);const errs=[]; // large : le rendu logiciel peut être très lent
   p.on('pageerror',e=>errs.push(e.message));
   p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|GPU stall/.test(m.text()))errs.push(m.text().slice(0,200));});
   await p.route('https://cdn.jsdelivr.net/npm/three@0.160.0/**',r=>r.fulfill({body:fs.readFileSync(path.join(THREE_DIR,r.request().url().split('three@0.160.0/')[1])),contentType:'application/javascript'}));
@@ -130,6 +130,12 @@ const CRITIQUES={
       H[1].hp=max*.5;H[2].hp=max*.2;H[0].alive=false;H[0].hp=0;H[0].g.visible=false;
       r.diademes_fissures=await until(()=>has(1,'d1')&&has(2,'d2')&&!has(1,'d2'),5);r.diademe_brise=await until(()=>has(0,'dead'),5);
       H[3].cool=50;r.diademe_ferme=await until(()=>!has(3,'open'),5);H[3].cool=.9;r.diademe_embrase=await until(()=>has(3,'open')&&!has(4,'open'),5);
+      // hors champ : le Dragon a sa flèche en fer de lance ; une boule de feu qui approche de dos allume un arc orange, plus vif de près
+      const fw=()=>P.vel.clone().normalize(),arcs=()=>[...document.querySelectorAll('.farc')].filter(a=>!a.hidden),F=D.fires[1];let dist=300,front=false;
+      const put=setInterval(()=>{D.dragon.head.position.copy(P.pos).addScaledVector(fw(),-500);F.life=3;F.dmg=0;F.r=3;F.m.visible=true;F.m.position.copy(P.pos).addScaledVector(fw(),front?dist:-dist);F.v.copy(fw()).multiplyScalar(front?-1:1);},16);
+      r.fleche_dragon_distincte=await until(()=>!!document.querySelector('.arrow.boss:not([hidden])'),5);
+      r.arc_boule_de_feu=await until(()=>arcs().length===1,5);const o1=+arcs()[0]?.style.opacity;dist=80;await until(()=>arcs().length===1&&+arcs()[0].style.opacity>o1+.3,5);r.arc_plus_vif_de_pres=+arcs()[0]?.style.opacity>o1+.3;
+      front=true;dist=150;r.pas_d_arc_a_l_ecran=await until(()=>arcs().length===0,5);clearInterval(put);
       clearInterval(keep);H.forEach(h=>h.cool=999);for(const f of D.fires){f.life=0;f.m.visible=false;}P.hp=100;return r;}));
     // tactile : la recharge se lit sur les boutons ronds (anneau, bouton sombre, éclat au retour)
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),tJ=document.getElementById('tJ'),tE=document.getElementById('tE');
@@ -160,7 +166,7 @@ const CRITIQUES={
     // téléphone en portrait : invitation à le tourner, que l'on peut ignorer
     {const {p:q,errs:e2}=await open(browser,{w:360,h:740,touch:true,play:false});const shown=()=>q.evaluate(()=>!document.getElementById('rotate').hidden);
       ok.portrait_invitation=await shown();await q.setViewportSize({width:740,height:360});await q.waitForTimeout(400);ok.paysage_sans_invitation=!(await shown());
-      await q.setViewportSize({width:360,height:740});await q.waitForTimeout(400);const back=await shown();await q.tap('#rotateSkip');ok.portrait_continuer_ainsi=back&&!(await shown());errs.push(...e2);await q.close();}
+      await q.setViewportSize({width:360,height:740});await q.waitForTimeout(400);const back=await shown();await q.evaluate(()=>document.getElementById('rotateSkip').click());ok.portrait_continuer_ainsi=back&&!(await shown());errs.push(...e2);await q.close();}
     const rates=Object.keys(ok).filter(k=>ok[k]!==true);return {...ok,rates,erreurs:errs};},
   // son : niveau crête pendant un combat chargé (explosions en série)
   async son(browser){const {p,errs}=await open(browser,{w:640,h:360});await p.waitForTimeout(1500);
