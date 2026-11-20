@@ -79,7 +79,14 @@ button:focus-visible{outline:2px solid var(--azure);outline-offset:4px}
 .hitword{position:absolute;left:0;top:0;font-family:var(--font-display);font-weight:900;font-size:1.45rem;letter-spacing:.06em;color:var(--ivory);-webkit-text-stroke:1.5px #3a1208;paint-order:stroke fill;text-shadow:0 0 14px rgba(243,197,82,.85);white-space:nowrap;will-change:transform,opacity}
 .hitword.kill{font-size:2.2rem;color:var(--gold)}
 .hitword.crit{font-size:1.85rem;color:#ffe2b8;text-shadow:0 0 16px rgba(229,72,44,.95)}
-#combo{font-family:var(--font-display);font-weight:700;color:var(--gold);text-align:right;font-size:1.05rem;min-height:1.3em;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+#combo{font-family:var(--font-display);font-weight:700;color:var(--gold);text-align:right;font-size:calc(1.05rem + var(--tier,0) * .13rem);min-height:1.3em;text-shadow:0 1px 8px rgba(0,0,0,.7);transform-origin:right center}
+#combo.bump{animation:comboBump .5s ease-out}
+@keyframes comboBump{0%{transform:scale(1.8);color:#fffbe9}100%{transform:scale(1)}}
+/* temps restant avant de perdre la série */
+#comboBar{margin:3px 0 0 auto;width:130px;height:3px;background:rgba(8,10,26,.5);opacity:0;transition:opacity .25s}
+#comboBar.on{opacity:1}
+#comboBar i{display:block;height:100%;margin-left:auto;background:var(--gold);box-shadow:0 0 6px rgba(243,197,82,.85)}
+.hitword.pts{font-size:1.15rem;color:#fffbe9;-webkit-text-stroke:1px #3a1208;text-shadow:0 0 10px rgba(243,197,82,.9)}
 #skills{display:flex;gap:14px;align-self:center;margin-top:auto}
 .skill{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--line);background:conic-gradient(rgba(243,197,82,.5) calc(var(--p,1) * 360deg),rgba(8,10,26,.55) 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .skill b{font-family:var(--font-display);font-size:1rem;line-height:1;color:var(--ivory)}
@@ -122,7 +129,7 @@ body.touch #skills{display:none}
 .stats{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:.95rem;font-variant-numeric:tabular-nums;text-align:left}
 .stats b{font-family:var(--font-display);font-weight:500;color:var(--gold);letter-spacing:.08em}
 @media (max-height:520px){.screen{align-items:flex-start}h1{font-size:clamp(1.6rem,6vh + 1rem,2.6rem)}.verse{font-size:.95rem}.panel{gap:8px}.keys{font-size:.85rem}}
-@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
+@media (prefers-reduced-motion:reduce){#banner,.bar > i,#hint,.crown{transition:none}#hint.urgent,#combo.bump,#tbtns .cd.flash,.bar.low,#danger.on{animation:none}}
 </style>
 
 <div id="stage">
@@ -132,7 +139,7 @@ body.touch #skills{display:none}
   <div id="hud" hidden>
     <div class="row">
       <div><div class="label">Lumière</div><div class="bar" id="hpBar"><i id="hp"></i><span id="hpGain"></span></div></div>
-      <div><div class="label" id="waveLabel">Vague I</div><div id="score">0</div><div id="combo"></div></div>
+      <div><div class="label" id="waveLabel">Vague I</div><div id="score">0</div><div id="combo"></div><div id="comboBar"><i></i></div></div>
     </div>
     <div id="boss" hidden><div class="label" id="bossLabel">Le Dragon, le serpent ancien · 7 têtes</div><div id="crowns" role="img" aria-label="Diadèmes du Dragon"></div></div>
     <div id="skills"><div class="skill" id="skJ"><b>F</b><span>Jugement</span></div><div class="skill" id="skE"><b>E</b><span>Esquive</span></div></div>
@@ -821,6 +828,7 @@ const sfx={
     const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=750;const og=ac.createGain();og.gain.setValueAtTime(0,t);og.gain.linearRampToValueAtTime(.24,t+.2);og.gain.setTargetAtTime(0,t+1.3,.3);
     o.connect(lp).connect(og).connect(AU.fx);o.start(t);lfo.start(t);o.stop(t+2.8);lfo.stop(t+2.8);}),
   heart:S(t=>{vDrum(t,AU.fx,.2,46);vDrum(t+.2,AU.fx,.13,42);}),
+  tier:S((t,n)=>{vBell(74+n*3,t,AU.fx,.06);vBell(81+n*3,t+.07,AU.fx,.045);}),
   hurt:S(t=>{vNoise(t,.28,'lowpass',1000,140,1,.2,AU.fx);tone(210,70,.3,'square',.05);}),
   fire:S((t,p)=>{const v=distVol(p);vNoise(t,.5,'lowpass',2400,280,.8,.09*v,AU.fx);tone(160,70,.35,'sawtooth',.025*v);}),
   whoosh:S(t=>vNoise(t,.38,'bandpass',380,2600,1.6,.16,AU.fx)),
@@ -879,7 +887,11 @@ const lowLight=()=>state==='play'&&P.hp>0&&P.hp<LOW_HP;
 const words=[];for(let i=0;i<14;i++){const el=document.createElement('div');el.className='hitword';el.hidden=true;$('words').appendChild(el);words.push({el,pos:new V(),t0:-9,on:false});}
 function word(text,pos,cls=''){const w=words.find(w=>!w.on)||words[0];w.on=true;w.t0=time;w.pos.copy(pos);w.el.textContent=text;w.el.className='hitword'+(cls?' '+cls:'');w.el.hidden=false;w.dx=rand(-40,40);w.dy=-(words.filter(o=>o.on&&time-o.t0<.4).length-1)*30;}
 const mult=()=>1+Math.min(4,Math.floor(combo/5))*.5;
-function registerHit(){combo++;comboT=2.4;RUN.maxCombo=Math.max(RUN.maxCombo,combo);}
+const COMBO_T=2.4,fmtN=n=>Math.round(n).toLocaleString('fr-FR'); // « 12 400 »
+function registerHit(){const m0=mult();combo++;comboT=COMBO_T;RUN.maxCombo=Math.max(RUN.maxCombo,combo);
+  if(mult()>m0){const el=$('combo'),tier=Math.round((mult()-1)*2);el.style.setProperty('--tier',tier);el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');sfx.tier(tier);}} // palier de multiplicateur : le chiffre grossit, une note monte
+// points gagnés, affichés près de l'ennemi abattu
+function gain(pts,pos){score+=pts;word('+'+fmtN(pts),pos,'pts');}
 /* ---------- invites contextuelles : une commande à la fois, au moment où elle sert, effacée dès le geste réussi ---------- */
 const TUT={done:{},hold:null,shown:''};
 const TUT_TXT={aim:['<b>Souris</b> ou <b>ZQSD</b> : visez un démon','<b>Joystick</b> : visez un démon'],fire:['<b>Clic</b> ou <b>Espace</b> : frappez !','Maintenez <b>Frapper</b>'],
@@ -913,7 +925,7 @@ function endStats(id,won){$('banner').classList.remove('on');bannerT=0;$('lock')
 function setDiff(i){diffI=i;try{localStorage.setItem('gdc-diff',i);}catch(e){}const won=getWon();document.querySelectorAll('.diff button').forEach(b=>{const d=+b.dataset.d;b.setAttribute('aria-checked',String(d===i));if(won[d]){b.dataset.won='1';b.title=DIFF[d].n+' : déjà vaincue';}});
   document.querySelectorAll('.diffInfo').forEach(e=>e.innerHTML='<b>'+DF().n+'</b> : '+DF().info);showBest();
   const e=$('easier');e.hidden=i===0;if(i>0)e.textContent='Essayer en '+DIFF[i-1].n;} // sur l'écran de défaite : proposer la difficulté juste en dessous
-function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);score+=Math.round(100*mult());stopT=.07;word('TERRASSÉ !',d.g.position,'kill');}
+function killDemon(i){const d=demons[i];RUN.kills++;burst(d.g.position,7,1.2,.3,60,120,1.3);sfx.boom(d.g.position);scene.remove(d.g);demons.splice(i,1);stopT=.07;word('TERRASSÉ !',d.g.position,'kill');gain(Math.round(100*mult()),d.g.position);}
 /* ---------- Jugement : orbe de lumière qui suit la cible et explose ---------- */
 const J={g:new THREE.Group(),v:new V(),life:0,on:false};
 J.g.add(new THREE.Mesh(new THREE.SphereGeometry(5,16,12),new THREE.MeshBasicMaterial({color:new THREE.Color(8,6,2.5),fog:false})));J.g.add(glow(0xffe08a,70,.9));J.g.visible=false;scene.add(J.g);
@@ -957,8 +969,8 @@ function hitHead(h,dmg,p,crit){if(!h.alive)return;h.hp-=dmg;h.flash=1;registerHi
   if(time-h.wordT>.6){word(crit?'GUEULE OUVERTE !':'DIADÈME',p,crit?'crit':'');h.wordT=time;}if(h.hp<=0)killHead(h);}
 function killHead(h){h.alive=false;h.hp=0;h.g.visible=false;burst(h.g.position,9,3,.6,160,200,1.8);burst(h.g.position,8,6,2,60,90,1.2);
   for(const n of h.neck){burst(n.g.position,8,2,.4,14,80,1);n.g.visible=false;}
-  sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;score+=Math.round(600*mult());const n=headsLeft();bossLabel();
-  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'kill');
+  sfx.roar();sfx.boom();stopT=.14;shake=reduced?0:.6;const n=headsLeft();bossLabel();
+  word(n?'UNE TÊTE TOMBE ! '+(NHEAD-n)+'/7':'LA DERNIÈRE TÊTE !',h.g.position,'kill');gain(Math.round(600*mult()),h.g.position);
   if(!n){dragon.hp=0;checkDragonDown();}}
 function updateHeads(dt,rage){
   const J0=dragon.head.position;hF.copy(dragon.v);if(hF.lengthSq()<1)hF.set(0,0,1);hF.normalize();hR.crossVectors(hF,UP).normalize();hU.crossVectors(hR,hF).normalize();
@@ -1133,7 +1145,8 @@ function updateHud(){
   updateHint();
   $('hp').style.width=P.hp+'%';{const low=lowLight(),g=$('hpGain'),from=Math.min(P.regenFrom??P.hp,P.hp),on=state==='play'&&P.hp-from>.2;
     $('hpBar').classList.toggle('low',low);$('danger').classList.toggle('on',low);g.classList.toggle('on',on);if(on){g.style.left=from+'%';g.style.width=(P.hp-from)+'%';}}
-  $('score').textContent=score;$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
+  $('score').textContent=fmtN(score);$('combo').textContent=combo>=3?('×'+combo+(mult()>1?'  ·  score ×'+mult():'')):'';
+  {const b=$('comboBar'),on=combo>=3&&state==='play';b.classList.toggle('on',on);if(on)b.firstElementChild.style.width=(clamp(comboT/COMBO_T,0,1)*100).toFixed(1)+'%';if(combo<5)$('combo').style.setProperty('--tier',0);}
   const jp=1-P.jCool/J_COOL,jr=P.jCool<=0&&!J.on,ep=1-P.dodgeCool/DODGE_COOL,er=P.dodgeCool<=0;
   if(touchMode){cdUi($('tJ'),jp,jr);cdUi($('tE'),ep,er);}else{cdUi($('skJ'),jp,jr);cdUi($('skE'),ep,er);}
   const lk=$('lock');if(lockT&&state==='play'){tmp.copy(lockT.pos).project(camera);if(tmp.z<1&&Math.abs(tmp.x)<1&&Math.abs(tmp.y)<1){lk.hidden=false;{const open=lockT.boss&&headOpen(lockT.ref);lk.classList.toggle('boss',lockT.boss&&!open);lk.classList.toggle('open',open);} // tête du Dragon : braise tant que le diadème la protège, or quand la gueule s'embrase
@@ -1185,6 +1198,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},hit(){registerHit();},fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

@@ -113,6 +113,16 @@ const CRITIQUES={
       r.invite_esquive=await until(()=>/esquive/i.test(hint())&&el.classList.contains('urgent'));D.dodge();
       r.esquive_apprise=await until(()=>D.tuto.done.dodge===true&&!el.classList.contains('urgent'));clearInterval(fb);D.fires[0].life=0;D.fires[0].m.visible=false;
       return r;}));
+    // combo : jauge de temps qui se vide, palier de multiplicateur mis en avant, points gagnés près de l'ennemi, score formaté
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),bar=$('comboBar'),w=()=>parseFloat(bar.firstElementChild.style.width);
+      const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
+      r.score_formate=D.fmtN(12400).replace(/\s/g,' ')==='12 400'&&D.fmtN(950)==='950';
+      await until(()=>D.combo===0,4);r.jauge_cachee_sans_combo=!bar.classList.contains('on');
+      for(let i=0;i<4;i++)D.hit();r.jauge_combo=await until(()=>bar.classList.contains('on')&&w()>60&&/×4/.test($('combo').textContent),3);const w0=w();
+      r.jauge_se_vide=await until(()=>w()<w0-15,3);D.hit();r.palier_mis_en_avant=await until(()=>$('combo').classList.contains('bump')&&$('combo').style.getPropertyValue('--tier')==='1'&&/score ×1[.,]5/.test($('combo').textContent),3);
+      const d=D.demons[0],s0=D.score,n0=D.demons.length;d.hp=1;d.cool=99;const hold=setInterval(()=>{P.hp=100;if(D.demons.includes(d)){d.g.position.copy(P.pos).addScaledVector(P.vel.clone().normalize(),260);d.v.set(0,0,0);}},16);D.input(0,0,true);
+      r.points_pres_de_l_ennemi=await until(()=>[...document.querySelectorAll('.hitword.pts')].some(e=>!e.hidden&&/^\+\d/.test(e.textContent)),15)&&D.demons.length===n0-1&&D.score>s0;
+      D.input(0,0,false);clearInterval(hold);r.score_affiche=await until(()=>$('score').textContent===D.fmtN(D.score),3);return r;}));
     // Lumière basse : barre braise, liseré rouge, musique assourdie ; la part regagnée s'affiche en plus clair
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),bar=document.getElementById('hpBar'),dg=document.getElementById('danger'),g=document.getElementById('hpGain');
       const until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
