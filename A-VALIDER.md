@@ -28,6 +28,7 @@ Jeu : https://claude.ai/artifact/KbZa9JpCU3RQqC14gcvtWM
 
 1. **Écouter la musique et les effets** : je ne peux pas les écouter moi-même. Volume, ambiance, sons agaçants ?
 2. **Difficulté en Gardien** : les pilotes automatiques perdent très peu de vie, donc le jeu est peut-être trop facile pour vous.
+   → Décidé le 21/11 : Gardien encaisse 20 % de dégâts en plus (coefficient 1,2 dans `DIFF`, au lieu de 1 ; Pèlerin 0,6 et Archange 1,4 inchangés). À rejouer pour confirmer le ressenti.
 3. **Fluidité** sur votre machine, surtout pendant la phase du Dragon (nuages + sept têtes).
 4. **Sur téléphone** : la prise en main du joystick et la taille des boutons.
 5. **L'arrivée du Dragon** se fait par en dessous, depuis la vallée : est-ce assez spectaculaire ?

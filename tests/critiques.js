@@ -102,6 +102,9 @@ const CRITIQUES={
       let okN=V.near.count>0,okF=V.far.count>0;for(let i=0;i<V.near.count;i++)if(d(V.near,i)>=V.R)okN=false;for(let i=0;i<V.far.count;i++)if(d(V.far,i)<V.R)okF=false;
       const tri=g=>(g.index?g.index.count:g.attributes.position.count)/3;
       return {vegetation_proche_detaillee:okN&&tri(V.near.geometry)===80,vegetation_lointaine_simplifiee:okF&&tri(V.far.geometry)===20&&V.far.count>V.near.count};}));
+    // dégâts reçus selon la difficulté : un coup de 10 retire 6 en Pèlerin, 12 en Gardien, 14 en Archange
+    Object.assign(ok,await p.evaluate(()=>{const D=__dbg,P=D.P,loss=i=>{D.setDiff(i);P.dodgeT=0;P.hp=100;D.hurt(10);return 100-P.hp;};
+      const l=[0,1,2].map(loss);D.setDiff(1);P.hp=100;return {degats_par_difficulte:Math.abs(l[0]-6)<1e-6&&Math.abs(l[1]-12)<1e-6&&Math.abs(l[2]-14)<1e-6};}));
     await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
     // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');
