@@ -1,8 +1,9 @@
 // Critiques automatiques : des pilotes jouent le jeu et rendent un rapport chiffré.
 // Usage : cd tests && npm install && node critiques.js [nom...]
+// Prérequis : Playwright et son Chromium, installés à part (npm i -g playwright && npx playwright install chromium) ; ils ne sont pas dans package.json.
 // Critiques : visee, moyen, debutant, perf, lisibilite, interface, son. Sans argument, toutes.
 // Le rapport est écrit dans tests/out/rapport.json, les captures dans tests/out/.
-const {chromium}=require('playwright');
+let chromium;try{({chromium}=require('playwright'));}catch(e){console.error('Playwright introuvable : installez-le (npm i -g playwright && npx playwright install chromium), puis relancez avec NODE_PATH="$(npm root -g)" node critiques.js');process.exit(1);}
 const fs=require('fs'),path=require('path');
 const ROOT=path.resolve(__dirname,'..'),OUT=path.join(__dirname,'out');
 fs.mkdirSync(OUT,{recursive:true});

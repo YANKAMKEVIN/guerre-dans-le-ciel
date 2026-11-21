@@ -1,6 +1,6 @@
 # Rondes de critiques
 
-Chaque version est jouée par des pilotes automatiques avant d'être confiée au joueur (`cd tests && npm install && node critiques.js`). Les durées sont en temps de jeu, comme sur une machine normale à 60 images par seconde.
+Chaque version est jouée par des pilotes automatiques avant d'être confiée au joueur (`cd tests && npm install && node critiques.js`). Playwright et son Chromium s'installent à part : `npm i -g playwright && npx playwright install chromium`, puis `NODE_PATH="$(npm root -g)" node critiques.js`. Les durées sont en temps de jeu, comme sur une machine normale à 60 images par seconde.
 
 ## Ronde 1
 
