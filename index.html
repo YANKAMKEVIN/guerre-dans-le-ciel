@@ -1114,7 +1114,7 @@ function nextWave(){wave++;
   else{phase='bossintro';pending={t:5.5,n:0};moodTarget=1;$('waveLabel').textContent='Le Dragon';sfx.roar();
     banner('Un grand dragon rouge','« …un grand dragon rouge, ayant sept têtes et dix cornes, et sur ses têtes sept diadèmes. » Apocalypse 12:3',5.5);}
 }
-function spawnDemons(n){for(let i=0;i<n;i++){const d=makeDemon(),a=rand(0,6.283);d.g.position.set(P.pos.x+Math.cos(a)*rand(520,760),P.pos.y+rand(-60,140),P.pos.z+Math.sin(a)*rand(520,760));demons.push(d);}}
+function spawnDemons(n){for(let i=0;i<n;i++){const d=makeDemon(),a=rand(0,6.283);d.g.position.set(P.pos.x+Math.cos(a)*rand(520,760),P.pos.y+rand(-60,140),P.pos.z+Math.sin(a)*rand(520,760));d.g.position.y=demonAlt(d.g.position.x,d.g.position.z,d.g.position.y);demons.push(d);}}
 function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dragon.cool=3.5;dragon.root.visible=true;$('boss').hidden=false;
   dragon.head.visible=true;dragon.head.position.copy(P.pos).addScaledVector(fwd,650);dragon.head.position.y=heightAt(dragon.head.position.x,dragon.head.position.z)-120;dragon.v.set(0,150,0);
   dragon.segs.forEach((s,i)=>{s.g.visible=true;s.g.position.copy(dragon.head.position);s.g.position.y-=(i+1)*SPACING;});
@@ -1151,7 +1151,7 @@ function updatePlayer(dt){
   else{sx=Math.sin(time*.3)*.22;sy=clamp((P.pos.y-320)*.004+P.pitch*1.2,-.4,.4);}
   P.yaw-=sx*(1.85+(P.speed>150?.25:0))*dt;P.pitch=clamp(P.pitch-sy*1.4*dt,-1.15,1.15); // virage plus vif (critique visée)
   const gy=heightAt(P.pos.x,P.pos.z);
-  if(state!=='dead'){if(P.pos.y<gy+110&&P.pitch<.3)P.pitch+=2.4*dt;if(P.pos.y>1500&&P.pitch>-.2)P.pitch-=1.8*dt;}
+  if(state!=='dead'){if(P.pos.y<gy+110&&P.pitch<.3)P.pitch+=2.4*dt;if(P.pos.y>SKY_CEIL&&P.pitch>-.2)P.pitch-=1.8*dt;}
   P.speed=lerp(P.speed,boost?195:112,1-Math.exp(-dt*3));
   const cp=Math.cos(P.pitch);fwd.set(-Math.sin(P.yaw)*cp,Math.sin(P.pitch),-Math.cos(P.yaw)*cp);
   P.vel.copy(fwd).multiplyScalar(P.speed);P.pos.addScaledVector(P.vel,dt);
@@ -1196,9 +1196,11 @@ function updateFires(dt){
     const rr=f.r+4.5;if(state==='play'&&P.dodgeT<=0&&f.m.position.distanceToSquared(P.pos)<rr*rr){damagePlayer(f.dmg);burst(P.pos,1.6,.55,.15,10,60,.45);f.life=0;}
     if(f.life<=0)f.m.visible=false;}
 }
+const SKY_CEIL=1500; // plafond de l'ange ; les démons restent dessous et au-dessus du relief, sinon ils deviennent inatteignables (blocage en vague 3)
+function demonAlt(x,z,y){return Math.max(heightAt(x,z)+40,Math.min(SKY_CEIL-40,y));}
 function updateDemons(dt){
   for(const d of demons){d.orbit+=dt*d.orbS;if(d.flash>0){d.flash=Math.max(0,d.flash-dt*6);if(d.mat)d.mat.emissiveIntensity=.45+d.flash*2.4;d.g.scale.setScalar(2.3*(1+d.flash*.08));}
-    tmp.set(P.pos.x+Math.cos(d.orbit)*d.rad,P.pos.y+d.h,P.pos.z+Math.sin(d.orbit)*d.rad).addScaledVector(fwd,90);
+    tmp.set(P.pos.x+Math.cos(d.orbit)*d.rad,P.pos.y+d.h,P.pos.z+Math.sin(d.orbit)*d.rad).addScaledVector(fwd,90);tmp.y=demonAlt(tmp.x,tmp.z,tmp.y);
     tmp.sub(d.g.position);const dist=tmp.length();tmp.normalize().multiplyScalar(Math.min(235,dist*1.6));
     d.v.lerp(tmp,1-Math.exp(-dt*2.2));d.g.position.addScaledVector(d.v,dt);d.g.lookAt(P.pos);
     const fl=Math.sin(time*8+d.ph)*.5;d.wr.rotation.y=-fl;d.wl.rotation.y=fl;
@@ -1301,6 +1303,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,roundF,cypT,walls,roofs])m.visible=false;},get veg(){return {near:roundT,far:roundF,R:VEG_NEAR,cx:vcx,cz:vcz};},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={demonAlt,SKY_CEIL,fast(){cloudPass.enabled=false;for(const m of [roundT,roundF,cypT,walls,roofs])m.visible=false;},get veg(){return {near:roundT,far:roundF,R:VEG_NEAR,cx:vcx,cz:vcz};},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>

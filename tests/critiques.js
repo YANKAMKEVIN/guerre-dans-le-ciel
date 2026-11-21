@@ -106,6 +106,11 @@ const CRITIQUES={
     Object.assign(ok,await p.evaluate(()=>{const D=__dbg,P=D.P,loss=i=>{D.setDiff(i);P.dodgeT=0;P.hp=100;D.hurt(10);return 100-P.hp;};
       const l=[0,1,2].map(loss);D.setDiff(1);P.hp=100;return {degats_par_difficulte:Math.abs(l[0]-6)<1e-6&&Math.abs(l[1]-12)<1e-6&&Math.abs(l[2]-14)<1e-6};}));
     await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
+    // démons atteignables : jamais au-dessus du plafond de l'ange ni sous le relief, même quand il vole au plafond (blocage en vague 3 des rondes 2 et 3)
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,C=D.SKY_CEIL,wait=ms=>new Promise(x=>setTimeout(x,ms)),d=D.demons[0],h0=d.h,y0=P.pos.y;
+      const fn=D.demonAlt(0,0,C+500)===C-40&&D.demonAlt(0,0,-1e4)>-1e4+100;d.h=90;P.pos.y=C+5;d.g.position.set(P.pos.x+150,C+150,P.pos.z);d.v.set(0,0,0);const t0=D.time;let maxY=-1e9;
+      while(D.time-t0<5){P.pos.y=C+5;P.pitch=0;P.hp=100;d.cool=99;if(D.time-t0>3)maxY=Math.max(maxY,d.g.position.y);await wait(30);}
+      d.h=h0;P.pos.y=y0;return {demons_atteignables:fn&&maxY<C-20&&maxY>C-120};}));
     // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');
       const hint=()=>el.classList.contains('on')?el.textContent:'',until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
