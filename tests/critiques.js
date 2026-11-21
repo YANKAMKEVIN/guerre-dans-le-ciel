@@ -195,6 +195,7 @@ const CRITIQUES={
       r.titre_en_lettres=document.querySelectorAll('#title .l').length===16&&$('title').getAttribute('aria-label')==='Guerre dans le Ciel'&&$('title').textContent.replace(/\s+/g,' ')==='Guerre dans le Ciel';
       r.image_de_titre_au_menu=await until(()=>!$('art').classList.contains('off'),3);
       r.icone_et_apercu=!!document.querySelector('link[rel=icon]')&&document.querySelector('meta[name=theme-color]').content==='#0a0e22'&&/keyart/.test(document.querySelector('meta[property="og:image"]').content);
+      {const og=k=>(document.querySelector('meta[property="og:'+k+'"]')||{}).content||'';r.apercu_absolu=/^https:\/\/raw\.githubusercontent\.com\/.+\/keyart\.webp$/.test(og('image'))&&/^https:\/\/claude\.ai\/artifact\/\w+$/.test(og('url'))&&og('image:width')==='1672'&&og('image:height')==='941';}
       // menu allégé : commandes (touches dessinées) et réglages rangés dans un volet fermé au départ
       {const m=$('more'),v=e=>e.checkVisibility();r.menu_volet_ferme=!m.open&&!v($('volM'))&&v($('play'))&&!document.querySelector('#menu .panel > .keys');
        m.open=true;r.menu_volet_ouvert=v($('volM'))&&v($('sens'))&&m.querySelectorAll('kbd').length>=8;m.open=false;}
