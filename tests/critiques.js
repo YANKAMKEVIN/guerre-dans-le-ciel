@@ -27,7 +27,8 @@ async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
 }
 
 // pilote générique : vise la cible la plus proche ; options de « niveau » du joueur
-const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.time;window.__plog={waves:{},dmg:0,hpMin:100,lastHp:100,deadAt:null,ticks:0};
+// le virage a un terme intégral : sans lui, un démon qui tourne autour de l'ange garde un retard constant (retard de réaction + correction proportionnelle) plus large que le cône de verrouillage, et le pilote le poursuit sans fin
+const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.time,iy=0,lt=D.time;window.__plog={waves:{},dmg:0,hpMin:100,lastHp:100,deadAt:null,ticks:0};
   return setInterval(()=>{const P=D.P,L=window.__plog;if(D.state!=='play'){if(D.state==='dead'&&L.deadAt===null)L.deadAt=D.time-t0;return;}L.ticks++;
     if(P.hp<L.lastHp)L.dmg+=L.lastHp-P.hp;L.lastHp=P.hp;L.hpMin=Math.min(L.hpMin,P.hp);
     const key=D.phase==='boss'||D.phase==='bossdying'?'dragon':'vague '+D.wave;if(!L.waves[key])L.waves[key]={start:D.time-t0};L.waves[key].end=D.time-t0;
@@ -36,13 +37,14 @@ const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.t
     if(D.dragon.alive&&D.dragon.dying<0)for(const h of D.dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(pos);if(dd<best){best=dd;tgt=h.g.position;}}
     // retard de réaction : on vise la position d'il y a o.delay secondes
     hist.push({t:D.time,p:tgt?tgt.clone():null});while(hist.length>2&&hist[1].t<D.time-o.delay)hist.shift();const seen=hist[0].p;
-    let sx=0,sy=0,fire=false;
+    let sx=0,sy=0,fire=false;const dtp=Math.min(.2,D.time-lt);lt=D.time;
     if(seen){const dx=seen.x-pos.x,dy=seen.y-pos.y,dz=seen.z-pos.z,dist=Math.hypot(dx,dy,dz)||1;
       let err=Math.atan2(-dx,-dz)-P.yaw;err=Math.atan2(Math.sin(err),Math.cos(err));err+=(Math.random()-.5)*o.noise;
       const pt=Math.asin(Math.max(-1,Math.min(1,dy/dist)))+(Math.random()-.5)*o.noise;
-      sx=Math.max(-1,Math.min(1,-err*2.5));sy=Math.max(-1,Math.min(1,-(pt-P.pitch)*2.5));if(dist<110)sx=sx>0?1:-1;
+      iy=Math.max(-.4,Math.min(.4,iy+err*dtp));sx=Math.max(-1,Math.min(1,-(err*2.5+iy*2)));sy=Math.max(-1,Math.min(1,-(pt-P.pitch)*2.5));if(dist<110)sx=sx>0?1:-1;
       fire=!!D.lockT&&Math.random()<o.fireRate;
       if(o.judge&&D.lockT&&(D.demons.filter(d=>d.g.position.distanceTo(pos)<420).length>=2||D.dragon.alive))D.judge();}
+    if(!seen)iy=0;
     if(o.dodge)for(const f of D.fires)if(f.life>0&&f.m.position.distanceTo(pos)<90){D.dodge();break;}
     D.input(sx*.85,sy*.85,fire);},60);};`;
 

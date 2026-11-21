@@ -40,3 +40,20 @@ La critique « interface » vérifie que les feuillus proches gardent leur maill
 | Interface | 62/62 | contrôles des dégâts par difficulté et de l'aperçu de lien absolu | 64/64, aucune erreur |
 
 Le blocage en vague 3 rejoint celui déjà vu avec le pilote moyen (306 s en vague III, ronde 2). Les dégâts reçus n'y sont pour rien : ils ne changent ni le nombre de démons ni la façon dont le pilote les vise. Reste à comprendre pourquoi les pilotes n'achèvent pas la vague 3 sur cette machine lente.
+
+## Ronde 4 : le blocage en vague 3
+
+Cause trouvée en rejouant les pilotes avec le hasard figé (graines), le temps de jeu accéléré et un relevé des positions : deux défauts se cumulaient.
+
+- **Bug du jeu : démons hors d'atteinte.** Chaque démon garde une hauteur fixe par rapport à l'ange, jusqu'à 90 unités au-dessus ou 50 en dessous, sans aucune limite. Quand l'ange atteint son plafond (1 500), le jeu l'empêche de cabrer ; un démon resté au-dessus de lui, jusqu'à 21° plus haut, sort alors du cône de verrouillage (12,5°) pour de bon. Près du sol, un démon pouvait aussi passer sous le relief. Relevé de la graine 2 : 266 s en vague 3, ange à 1 500, dernier démon 87 unités au-dessus, jamais verrouillé. Le même blocage se reproduit sur `main` : le bug existait avant la ronde 3.
+- **Limite du pilote : retard constant.** Le pilote corrigeait son cap en proportion de l'écart, avec un retard de réaction de 0,35 s pour le débutant. Face à un démon qui tourne autour de lui à 0,6 rad/s, il gardait 20° de retard, plus que le cône de verrouillage, et le poursuivait en cercle sans fin, à hauteur égale.
+
+| Critique | Avant | Correction | Après |
+|---|---|---|---|
+| Démons atteignables | blocages en vague 3 sur 2 graines sur 3 (débutant, Gardien), et un en vague 1 sur `main` | hauteur des démons bornée entre le relief + 40 et le plafond − 40 | contrôle `demons_atteignables` dans la critique interface |
+| Pilote : virage | retard constant de 20° derrière un démon qui tourne | terme intégral dans la correction de cap | vague 3 en 54 à 60 s sur les graines 1 et 2, victoires en 4 min 00 et 4 min 25 |
+| Durée : pilote moyen (Gardien) | 306 s en vague 3, pas fini (ronde 2) | les deux corrections | victoire en 3 min 14, vague 3 en 45 s, Dragon en 1 min 17, 23 PV au plus bas |
+| Difficulté : débutant (Gardien) | 568 s en vague 3, pas fini (ronde 3) | les deux corrections | 1re partie : mort en vague 3 à 2 min 04 (10 PV au plus bas avant) ; 2e partie : victoire en 4 min 35, vague 3 en 62 s, 54 PV au plus bas |
+| Interface | 64/64 | contrôle demons_atteignables | 65/65, aucune erreur |
+
+La graine 4 et la 1re partie du débutant meurent en vague 3 : c'est la difficulté de Gardien (20 % de dégâts en plus), plus un blocage.
