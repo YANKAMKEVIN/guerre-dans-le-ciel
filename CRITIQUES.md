@@ -19,4 +19,15 @@ Chaque version est jouée par des pilotes automatiques avant d'être confiée au
 
 Étape intermédiaire : avec 3 boules de feu par tête, le débutant est mort au Dragon, avec 3 têtes restantes. Les salves sont revenues à 2 boules, un peu moins souvent.
 
-Encore à faire : les arbres pèsent environ 570 000 triangles en vague normale ; la simplification des têtes du Dragon a été essayée puis abandonnée (trous dans le maillage).
+La simplification des têtes du Dragon a été essayée puis abandonnée (trous dans le maillage).
+
+## Ronde 2
+
+| Critique | Avant | Correction | Après |
+|---|---|---|---|
+| Performances : vague 1 (1280×720) | 50 appels, 473 000 triangles | feuillus au-delà de 1 400 unités en icosaèdre simple (20 triangles au lieu de 80) | 50 appels, 210 000 triangles |
+| Performances : phase du Dragon | 111 appels, 689 000 triangles | même correction | 112 appels, 427 000 triangles |
+| Lisibilité : vue de la vallée | | | aucune différence visible sur la capture de la vague 1 |
+| Lisibilité : écran brûlé pendant un tir du Dragon | 3,1 % | aucune | 2,8 % |
+
+La critique « interface » vérifie que les feuillus proches gardent leur maillage fin et que ceux du lointain passent au maillage simple.

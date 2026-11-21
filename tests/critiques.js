@@ -96,6 +96,11 @@ const CRITIQUES={
     await p.close();return {pixels_brules_dragon_calme_pct:calme,pixels_brules_pendant_tir_pct:tir,erreurs:errs};},
   // interface : chaque point vaut vrai ou faux ; tout doit être vrai
   async interface(browser){const {p,errs}=await open(browser);const ok={};await p.evaluate(()=>__dbg.fast());
+    // végétation : les feuillus proches gardent leur maillage fin, ceux du lointain passent au maillage simple
+    Object.assign(ok,await p.evaluate(()=>{const V=__dbg.veg,m=new V.near.matrix.constructor(),d=(M,i)=>{M.getMatrixAt(i,m);return Math.hypot(m.elements[12]-V.cx,m.elements[14]-V.cz);};
+      let okN=V.near.count>0,okF=V.far.count>0;for(let i=0;i<V.near.count;i++)if(d(V.near,i)>=V.R)okN=false;for(let i=0;i<V.far.count;i++)if(d(V.far,i)<V.R)okF=false;
+      const tri=g=>(g.index?g.index.count:g.attributes.position.count)/3;
+      return {vegetation_proche_detaillee:okN&&tri(V.near.geometry)===80,vegetation_lointaine_simplifiee:okF&&tri(V.far.geometry)===20&&V.far.count>V.near.count};}));
     await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
     // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');

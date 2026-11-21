@@ -569,18 +569,20 @@ function updateTerrain(p){
 const MAXR=9000,MAXC=3500,MAXH=1600;
 const crownMat=new THREE.MeshToonMaterial({gradientMap:grad});
 const roundT=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),crownMat,MAXR);
+// au loin, les feuillus passent en icosaèdre simple (20 triangles au lieu de 80) : la brume et la distance gomment la différence
+const VEG_NEAR=1400,roundF=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),crownMat,MAXR);
 const cypT=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,7),crownMat,MAXC);
 const wallMat=new THREE.MeshToonMaterial({color:'#f4ead8',gradientMap:grad});
 const roofMat=new THREE.MeshToonMaterial({gradientMap:grad});
 const walls=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),wallMat,MAXH);
 const roofGeo=new THREE.ConeGeometry(.78,.55,4);roofGeo.rotateY(Math.PI/4);
 const roofs=new THREE.InstancedMesh(roofGeo,roofMat,MAXH);
-for(const m of [roundT,cypT,walls,roofs]){m.frustumCulled=false;m.count=0;scene.add(m);}
+for(const m of [roundT,roundF,cypT,walls,roofs]){m.frustumCulled=false;m.count=0;scene.add(m);}
 const greens=['#3f9a2e','#2f7f2a','#55a832','#1f6b2c','#6cb43a'].map(h=>C(h)),roofCols=['#c8552f','#b5462a','#d86a3a','#a8402c'].map(h=>C(h));
 let vcx=1e9,vcz=1e9;
 function updateVeg(p){
   const gx=Math.round(p.x/700)*700,gz=Math.round(p.z/700)*700;if(gx===vcx&&gz===vcz)return;vcx=gx;vcz=gz;
-  let nr=0,nc=0,nh=0;const R=3600,ST=46,col=new THREE.Color();
+  let nr=0,nf=0,nc=0,nh=0;const R=3600,ST=46,col=new THREE.Color();
   for(let x=gx-R;x<gx+R;x+=ST)for(let z=gz-R;z<gz+R;z+=ST){
     const h1=hash(x*.13,z*.17),h2=hash(z*.11+3,x*.07),px=x+(h1-.5)*ST,pz=z+(h2-.5)*ST,y=heightAt(px,pz),rv=_rv,t=(y+900)/830;
     if(vC&&valleyEdge(px,pz)>.5){ // dans la vallée peinte : arbres et maisons suivent l'image
@@ -589,9 +591,10 @@ function updateVeg(p){
         dummy.position.set(px,y+hh/2,pz);dummy.rotation.set(0,a,0);dummy.scale.set(w,hh,d);dummy.updateMatrix();walls.setMatrixAt(nh,dummy.matrix);
         dummy.position.y=y+hh+w*.27;dummy.scale.set(w*1.25,w,d*1.6);dummy.updateMatrix();roofs.setMatrixAt(nh,dummy.matrix);roofs.setColorAt(nh,roofCols[(h1*97|0)%4]);nh++;}continue;}
       const pr=c===2?.7:0;if(hash(px*.05,pz*.05)>pr)continue; // arbres seulement dans les forêts peintes
+      const near=Math.hypot(px-gx,pz-gz)<VEG_NEAR;
       col.copy(greens[(h2*53|0)%5]).multiplyScalar(.62+h1*.2);
       if(h1<.15&&nc<MAXC){const r=rand(9,13),hh=r*rand(4,5.5);dummy.position.set(px,y+hh*.5,pz);dummy.rotation.set(0,0,0);dummy.scale.set(r,hh,r);dummy.updateMatrix();cypT.setMatrixAt(nc,dummy.matrix);cypT.setColorAt(nc,col);nc++;}
-      else if(nr<MAXR){const r=rand(11,17);dummy.position.set(px,y+r*.6,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.8,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
+      else if(near?nr<MAXR:nf<MAXR){const r=rand(11,17);dummy.position.set(px,y+r*.6,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.8,r);dummy.updateMatrix();if(near){roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}else{roundF.setMatrixAt(nf,dummy.matrix);roundF.setColorAt(nf,col);nf++;}}
       continue;}
     if(rv<.024||t>.6)continue;
     const village=vnoise(px*.0011+7,pz*.0011+3);
@@ -601,12 +604,13 @@ function updateVeg(p){
         roofs.setColorAt(nh,roofCols[(h1*97|0)%4]);nh++;}continue;}
     const forest=vnoise(px*.0035,pz*.0035),dens=t<.3?(forest>.52?.85:.05):(t<.45?.25:.06);
     if(hash(px*.05,pz*.05)>dens)continue;
+    const near=Math.hypot(px-gx,pz-gz)<VEG_NEAR;
     col.copy(greens[(h2*53|0)%5]).multiplyScalar(.85+h1*.3);
     if(h1<.18&&nc<MAXC){const r=rand(9,14),hh=r*rand(4,5.5);dummy.position.set(px,y+hh*.5,pz);dummy.rotation.set(0,0,0);dummy.scale.set(r,hh,r);dummy.updateMatrix();cypT.setMatrixAt(nc,dummy.matrix);cypT.setColorAt(nc,col);nc++;}
-    else if(nr<MAXR){const r=rand(18,30);dummy.position.set(px,y+r*.75,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.85,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
+    else if(near?nr<MAXR:nf<MAXR){const r=rand(18,30);dummy.position.set(px,y+r*.75,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.85,r);dummy.updateMatrix();if(near){roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}else{roundF.setMatrixAt(nf,dummy.matrix);roundF.setColorAt(nf,col);nf++;}}
   }
-  roundT.count=nr;cypT.count=nc;walls.count=nh;roofs.count=nh;
-  for(const m of [roundT,cypT,walls,roofs]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}
+  roundT.count=nr;roundF.count=nf;cypT.count=nc;walls.count=nh;roofs.count=nh;
+  for(const m of [roundT,roundF,cypT,walls,roofs]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}
 }
 // temple sur la colline la plus haute près du départ
 (function(){let best=null,by=-1e9;for(let x=-2200;x<=2200;x+=80)for(let z=-2600;z<=600;z+=80){const y=heightAt(x,z);if(_rv>.06&&y>by){by=y;best=[x,z];}}
@@ -1291,6 +1295,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,roundF,cypT,walls,roofs])m.visible=false;},get veg(){return {near:roundT,far:roundF,R:VEG_NEAR,cx:vcx,cz:vcz};},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
