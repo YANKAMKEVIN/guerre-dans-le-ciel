@@ -6,6 +6,8 @@ Jeu de combat aérien dans le navigateur (three.js) : un ange affronte trois vag
 
 ## Jouer
 
+Version publiée : https://claude.ai/artifact/KbZa9JpCU3RQqC14gcvtWM (artifact claude.ai).
+
 Le jeu est un site statique : `index.html` et ses fichiers à côté.
 
 ```bash
@@ -22,5 +24,7 @@ Puis ouvrir http://localhost:8000. Ouvrir `index.html` directement (`file://`) n
 - `angel.json`, `demon.json` : maillages riggés (squelette et poids de peau) ; `dragon.json` : tête du Dragon. Leurs textures sont les fichiers `*-tex.png`.
 - `valley.webp` : la vallée peinte qui sert de sol ; `keyart.webp` : l'image de référence, affichée à l'écran titre.
 - `A-VALIDER.md` : la liste des points à valider en jouant.
+
+**Aperçu des liens** : `og:url` pointe vers l'artifact claude.ai ; `og:image` vers `keyart.webp` servie par raw.githubusercontent.com (branche `main`), car un aperçu exige une adresse d'image absolue et publique, ce que l'artifact, privé, ne fournit pas. Renommer `keyart.webp`, la branche `main` ou rendre le dépôt privé casse l'aperçu.
 
 Les modèles 3D ont été générés avec Higgsfield à partir d'images de référence, puis riggés par script.

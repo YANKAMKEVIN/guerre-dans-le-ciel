@@ -1,8 +1,9 @@
 // Critiques automatiques : des pilotes jouent le jeu et rendent un rapport chiffré.
 // Usage : cd tests && npm install && node critiques.js [nom...]
+// Prérequis : Playwright et son Chromium, installés à part (npm i -g playwright && npx playwright install chromium) ; ils ne sont pas dans package.json.
 // Critiques : visee, moyen, debutant, perf, lisibilite, interface, son. Sans argument, toutes.
 // Le rapport est écrit dans tests/out/rapport.json, les captures dans tests/out/.
-const {chromium}=require('playwright');
+let chromium;try{({chromium}=require('playwright'));}catch(e){console.error('Playwright introuvable : installez-le (npm i -g playwright && npx playwright install chromium), puis relancez avec NODE_PATH="$(npm root -g)" node critiques.js');process.exit(1);}
 const fs=require('fs'),path=require('path');
 const ROOT=path.resolve(__dirname,'..'),OUT=path.join(__dirname,'out');
 fs.mkdirSync(OUT,{recursive:true});
@@ -26,7 +27,8 @@ async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
 }
 
 // pilote générique : vise la cible la plus proche ; options de « niveau » du joueur
-const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.time;window.__plog={waves:{},dmg:0,hpMin:100,lastHp:100,deadAt:null,ticks:0};
+// le virage a un terme intégral : sans lui, un démon qui tourne autour de l'ange garde un retard constant (retard de réaction + correction proportionnelle) plus large que le cône de verrouillage, et le pilote le poursuit sans fin
+const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.time,iy=0,lt=D.time;window.__plog={waves:{},dmg:0,hpMin:100,lastHp:100,deadAt:null,ticks:0};
   return setInterval(()=>{const P=D.P,L=window.__plog;if(D.state!=='play'){if(D.state==='dead'&&L.deadAt===null)L.deadAt=D.time-t0;return;}L.ticks++;
     if(P.hp<L.lastHp)L.dmg+=L.lastHp-P.hp;L.lastHp=P.hp;L.hpMin=Math.min(L.hpMin,P.hp);
     const key=D.phase==='boss'||D.phase==='bossdying'?'dragon':'vague '+D.wave;if(!L.waves[key])L.waves[key]={start:D.time-t0};L.waves[key].end=D.time-t0;
@@ -35,13 +37,14 @@ const PILOT=`window.__pilot=function(o){const D=__dbg;let last={},hist=[],t0=D.t
     if(D.dragon.alive&&D.dragon.dying<0)for(const h of D.dragon.heads)if(h.alive){const dd=h.g.position.distanceTo(pos);if(dd<best){best=dd;tgt=h.g.position;}}
     // retard de réaction : on vise la position d'il y a o.delay secondes
     hist.push({t:D.time,p:tgt?tgt.clone():null});while(hist.length>2&&hist[1].t<D.time-o.delay)hist.shift();const seen=hist[0].p;
-    let sx=0,sy=0,fire=false;
+    let sx=0,sy=0,fire=false;const dtp=Math.min(.2,D.time-lt);lt=D.time;
     if(seen){const dx=seen.x-pos.x,dy=seen.y-pos.y,dz=seen.z-pos.z,dist=Math.hypot(dx,dy,dz)||1;
       let err=Math.atan2(-dx,-dz)-P.yaw;err=Math.atan2(Math.sin(err),Math.cos(err));err+=(Math.random()-.5)*o.noise;
       const pt=Math.asin(Math.max(-1,Math.min(1,dy/dist)))+(Math.random()-.5)*o.noise;
-      sx=Math.max(-1,Math.min(1,-err*2.5));sy=Math.max(-1,Math.min(1,-(pt-P.pitch)*2.5));if(dist<110)sx=sx>0?1:-1;
+      iy=Math.max(-.4,Math.min(.4,iy+err*dtp));sx=Math.max(-1,Math.min(1,-(err*2.5+iy*2)));sy=Math.max(-1,Math.min(1,-(pt-P.pitch)*2.5));if(dist<110)sx=sx>0?1:-1;
       fire=!!D.lockT&&Math.random()<o.fireRate;
       if(o.judge&&D.lockT&&(D.demons.filter(d=>d.g.position.distanceTo(pos)<420).length>=2||D.dragon.alive))D.judge();}
+    if(!seen)iy=0;
     if(o.dodge)for(const f of D.fires)if(f.life>0&&f.m.position.distanceTo(pos)<90){D.dodge();break;}
     D.input(sx*.85,sy*.85,fire);},60);};`;
 
@@ -96,7 +99,20 @@ const CRITIQUES={
     await p.close();return {pixels_brules_dragon_calme_pct:calme,pixels_brules_pendant_tir_pct:tir,erreurs:errs};},
   // interface : chaque point vaut vrai ou faux ; tout doit être vrai
   async interface(browser){const {p,errs}=await open(browser);const ok={};await p.evaluate(()=>__dbg.fast());
+    // végétation : les feuillus proches gardent leur maillage fin, ceux du lointain passent au maillage simple
+    Object.assign(ok,await p.evaluate(()=>{const V=__dbg.veg,m=new V.near.matrix.constructor(),d=(M,i)=>{M.getMatrixAt(i,m);return Math.hypot(m.elements[12]-V.cx,m.elements[14]-V.cz);};
+      let okN=V.near.count>0,okF=V.far.count>0;for(let i=0;i<V.near.count;i++)if(d(V.near,i)>=V.R)okN=false;for(let i=0;i<V.far.count;i++)if(d(V.far,i)<V.R)okF=false;
+      const tri=g=>(g.index?g.index.count:g.attributes.position.count)/3;
+      return {vegetation_proche_detaillee:okN&&tri(V.near.geometry)===80,vegetation_lointaine_simplifiee:okF&&tri(V.far.geometry)===20&&V.far.count>V.near.count};}));
+    // dégâts reçus selon la difficulté : un coup de 10 retire 6 en Pèlerin, 12 en Gardien, 14 en Archange
+    Object.assign(ok,await p.evaluate(()=>{const D=__dbg,P=D.P,loss=i=>{D.setDiff(i);P.dodgeT=0;P.hp=100;D.hurt(10);return 100-P.hp;};
+      const l=[0,1,2].map(loss);D.setDiff(1);P.hp=100;return {degats_par_difficulte:Math.abs(l[0]-6)<1e-6&&Math.abs(l[1]-12)<1e-6&&Math.abs(l[2]-14)<1e-6};}));
     await p.waitForFunction(()=>__dbg.demons.length>0,null,{timeout:60000});
+    // démons atteignables : jamais au-dessus du plafond de l'ange ni sous le relief, même quand il vole au plafond (blocage en vague 3 des rondes 2 et 3)
+    Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,C=D.SKY_CEIL,wait=ms=>new Promise(x=>setTimeout(x,ms)),d=D.demons[0],h0=d.h,y0=P.pos.y;
+      const fn=D.demonAlt(0,0,C+500)===C-40&&D.demonAlt(0,0,-1e4)>-1e4+100;d.h=90;P.pos.y=C+5;d.g.position.set(P.pos.x+150,C+150,P.pos.z);d.v.set(0,0,0);const t0=D.time;let maxY=-1e9;
+      while(D.time-t0<5){P.pos.y=C+5;P.pitch=0;P.hp=100;d.cool=99;if(D.time-t0>3)maxY=Math.max(maxY,d.g.position.y);await wait(30);}
+      d.h=h0;P.pos.y=y0;return {demons_atteignables:fn&&maxY<C-20&&maxY>C-120};}));
     // invites contextuelles : viser, frapper, esquiver, Jugement, chacune effacée dès le geste réussi
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,P=D.P,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),el=document.getElementById('hint');
       const hint=()=>el.classList.contains('on')?el.textContent:'',until=async(f,s=20)=>{const t0=D.time;while(!f()&&D.time-t0<s)await wait(30);return !!f();};
@@ -186,6 +202,7 @@ const CRITIQUES={
       r.titre_en_lettres=document.querySelectorAll('#title .l').length===16&&$('title').getAttribute('aria-label')==='Guerre dans le Ciel'&&$('title').textContent.replace(/\s+/g,' ')==='Guerre dans le Ciel';
       r.image_de_titre_au_menu=await until(()=>!$('art').classList.contains('off'),3);
       r.icone_et_apercu=!!document.querySelector('link[rel=icon]')&&document.querySelector('meta[name=theme-color]').content==='#0a0e22'&&/keyart/.test(document.querySelector('meta[property="og:image"]').content);
+      {const og=k=>(document.querySelector('meta[property="og:'+k+'"]')||{}).content||'';r.apercu_absolu=/^https:\/\/raw\.githubusercontent\.com\/.+\/keyart\.webp$/.test(og('image'))&&/^https:\/\/claude\.ai\/artifact\/\w+$/.test(og('url'))&&og('image:width')==='1672'&&og('image:height')==='941';}
       // menu allégé : commandes (touches dessinées) et réglages rangés dans un volet fermé au départ
       {const m=$('more'),v=e=>e.checkVisibility();r.menu_volet_ferme=!m.open&&!v($('volM'))&&v($('play'))&&!document.querySelector('#menu .panel > .keys');
        m.open=true;r.menu_volet_ouvert=v($('volM'))&&v($('sens'))&&m.querySelectorAll('kbd').length>=8;m.open=false;}

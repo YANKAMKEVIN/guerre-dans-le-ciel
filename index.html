@@ -7,7 +7,13 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Guerre dans le Ciel">
 <meta property="og:description" content="« Et il y eut guerre dans le ciel. Michel et ses anges combattirent contre le dragon. » Apocalypse 12:7">
-<meta property="og:image" content="keyart.webp">
+<meta property="og:url" content="https://claude.ai/artifact/KbZa9JpCU3RQqC14gcvtWM">
+<!-- og:image absolue : la page claude.ai est privée et ne sert pas d’image ; on vise l’illustration du dépôt public -->
+<meta property="og:image" content="https://raw.githubusercontent.com/YANKAMKEVIN/guerre-dans-le-ciel/main/keyart.webp">
+<meta property="og:image:type" content="image/webp">
+<meta property="og:image:width" content="1672">
+<meta property="og:image:height" content="941">
+<meta property="og:image:alt" content="Un ange face au dragon rouge à sept têtes, au-dessus d’une vallée peinte">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
@@ -569,18 +575,20 @@ function updateTerrain(p){
 const MAXR=9000,MAXC=3500,MAXH=1600;
 const crownMat=new THREE.MeshToonMaterial({gradientMap:grad});
 const roundT=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),crownMat,MAXR);
+// au loin, les feuillus passent en icosaèdre simple (20 triangles au lieu de 80) : la brume et la distance gomment la différence
+const VEG_NEAR=1400,roundF=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),crownMat,MAXR);
 const cypT=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,7),crownMat,MAXC);
 const wallMat=new THREE.MeshToonMaterial({color:'#f4ead8',gradientMap:grad});
 const roofMat=new THREE.MeshToonMaterial({gradientMap:grad});
 const walls=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),wallMat,MAXH);
 const roofGeo=new THREE.ConeGeometry(.78,.55,4);roofGeo.rotateY(Math.PI/4);
 const roofs=new THREE.InstancedMesh(roofGeo,roofMat,MAXH);
-for(const m of [roundT,cypT,walls,roofs]){m.frustumCulled=false;m.count=0;scene.add(m);}
+for(const m of [roundT,roundF,cypT,walls,roofs]){m.frustumCulled=false;m.count=0;scene.add(m);}
 const greens=['#3f9a2e','#2f7f2a','#55a832','#1f6b2c','#6cb43a'].map(h=>C(h)),roofCols=['#c8552f','#b5462a','#d86a3a','#a8402c'].map(h=>C(h));
 let vcx=1e9,vcz=1e9;
 function updateVeg(p){
   const gx=Math.round(p.x/700)*700,gz=Math.round(p.z/700)*700;if(gx===vcx&&gz===vcz)return;vcx=gx;vcz=gz;
-  let nr=0,nc=0,nh=0;const R=3600,ST=46,col=new THREE.Color();
+  let nr=0,nf=0,nc=0,nh=0;const R=3600,ST=46,col=new THREE.Color();
   for(let x=gx-R;x<gx+R;x+=ST)for(let z=gz-R;z<gz+R;z+=ST){
     const h1=hash(x*.13,z*.17),h2=hash(z*.11+3,x*.07),px=x+(h1-.5)*ST,pz=z+(h2-.5)*ST,y=heightAt(px,pz),rv=_rv,t=(y+900)/830;
     if(vC&&valleyEdge(px,pz)>.5){ // dans la vallée peinte : arbres et maisons suivent l'image
@@ -589,9 +597,10 @@ function updateVeg(p){
         dummy.position.set(px,y+hh/2,pz);dummy.rotation.set(0,a,0);dummy.scale.set(w,hh,d);dummy.updateMatrix();walls.setMatrixAt(nh,dummy.matrix);
         dummy.position.y=y+hh+w*.27;dummy.scale.set(w*1.25,w,d*1.6);dummy.updateMatrix();roofs.setMatrixAt(nh,dummy.matrix);roofs.setColorAt(nh,roofCols[(h1*97|0)%4]);nh++;}continue;}
       const pr=c===2?.7:0;if(hash(px*.05,pz*.05)>pr)continue; // arbres seulement dans les forêts peintes
+      const near=Math.hypot(px-gx,pz-gz)<VEG_NEAR;
       col.copy(greens[(h2*53|0)%5]).multiplyScalar(.62+h1*.2);
       if(h1<.15&&nc<MAXC){const r=rand(9,13),hh=r*rand(4,5.5);dummy.position.set(px,y+hh*.5,pz);dummy.rotation.set(0,0,0);dummy.scale.set(r,hh,r);dummy.updateMatrix();cypT.setMatrixAt(nc,dummy.matrix);cypT.setColorAt(nc,col);nc++;}
-      else if(nr<MAXR){const r=rand(11,17);dummy.position.set(px,y+r*.6,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.8,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
+      else if(near?nr<MAXR:nf<MAXR){const r=rand(11,17);dummy.position.set(px,y+r*.6,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.8,r);dummy.updateMatrix();if(near){roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}else{roundF.setMatrixAt(nf,dummy.matrix);roundF.setColorAt(nf,col);nf++;}}
       continue;}
     if(rv<.024||t>.6)continue;
     const village=vnoise(px*.0011+7,pz*.0011+3);
@@ -601,12 +610,13 @@ function updateVeg(p){
         roofs.setColorAt(nh,roofCols[(h1*97|0)%4]);nh++;}continue;}
     const forest=vnoise(px*.0035,pz*.0035),dens=t<.3?(forest>.52?.85:.05):(t<.45?.25:.06);
     if(hash(px*.05,pz*.05)>dens)continue;
+    const near=Math.hypot(px-gx,pz-gz)<VEG_NEAR;
     col.copy(greens[(h2*53|0)%5]).multiplyScalar(.85+h1*.3);
     if(h1<.18&&nc<MAXC){const r=rand(9,14),hh=r*rand(4,5.5);dummy.position.set(px,y+hh*.5,pz);dummy.rotation.set(0,0,0);dummy.scale.set(r,hh,r);dummy.updateMatrix();cypT.setMatrixAt(nc,dummy.matrix);cypT.setColorAt(nc,col);nc++;}
-    else if(nr<MAXR){const r=rand(18,30);dummy.position.set(px,y+r*.75,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.85,r);dummy.updateMatrix();roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}
+    else if(near?nr<MAXR:nf<MAXR){const r=rand(18,30);dummy.position.set(px,y+r*.75,pz);dummy.rotation.set(0,h1*6,0);dummy.scale.set(r,r*.85,r);dummy.updateMatrix();if(near){roundT.setMatrixAt(nr,dummy.matrix);roundT.setColorAt(nr,col);nr++;}else{roundF.setMatrixAt(nf,dummy.matrix);roundF.setColorAt(nf,col);nf++;}}
   }
-  roundT.count=nr;cypT.count=nc;walls.count=nh;roofs.count=nh;
-  for(const m of [roundT,cypT,walls,roofs]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}
+  roundT.count=nr;roundF.count=nf;cypT.count=nc;walls.count=nh;roofs.count=nh;
+  for(const m of [roundT,roundF,cypT,walls,roofs]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}
 }
 // temple sur la colline la plus haute près du départ
 (function(){let best=null,by=-1e9;for(let x=-2200;x<=2200;x+=80)for(let z=-2600;z<=600;z+=80){const y=heightAt(x,z);if(_rv>.06&&y>by){by=y;best=[x,z];}}
@@ -973,7 +983,7 @@ function updateHint(){let k=null,html='';
   if(state==='play'){k=tutStep();if(k!=='dodge'&&TUT.hold&&time<TUT.hold.until){k=null;html=TUT.hold.html;}else if(k)html=TUT_TXT[k][touchMode?1:0];}
   if(html===TUT.shown)return;TUT.shown=html;const el=$('hint');if(html)el.innerHTML=html;el.classList.toggle('on',!!html);el.classList.toggle('urgent',k==='dodge');}
 /* ---------- difficulté, statistiques et record ---------- */
-const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75,info:'coups adoucis, tirs ennemis plus rares, têtes moins résistantes. Pour découvrir.'},{n:'Gardien',dmg:1,rate:1,hp:1,info:'l’épreuve de référence.'},
+const DIFF=[{n:'Pèlerin',dmg:.6,rate:1.35,hp:.75,info:'coups adoucis, tirs ennemis plus rares, têtes moins résistantes. Pour découvrir.'},{n:'Gardien',dmg:1.2,rate:1,hp:1,info:'l’épreuve de référence.'},
   {n:'Archange',dmg:1.4,rate:.75,hp:1.3,info:'coups plus durs, ennemis plus vifs, démons et têtes plus résistants.'}];
 let diffI=1;try{diffI=+(localStorage.getItem('gdc-diff')??1);if(!(diffI>=0&&diffI<=2))diffI=1;}catch(e){}
 const DF=()=>DIFF[diffI],headHp=()=>Math.round(HEAD_HP*DF().hp);
@@ -1104,7 +1114,7 @@ function nextWave(){wave++;
   else{phase='bossintro';pending={t:5.5,n:0};moodTarget=1;$('waveLabel').textContent='Le Dragon';sfx.roar();
     banner('Un grand dragon rouge','« …un grand dragon rouge, ayant sept têtes et dix cornes, et sur ses têtes sept diadèmes. » Apocalypse 12:3',5.5);}
 }
-function spawnDemons(n){for(let i=0;i<n;i++){const d=makeDemon(),a=rand(0,6.283);d.g.position.set(P.pos.x+Math.cos(a)*rand(520,760),P.pos.y+rand(-60,140),P.pos.z+Math.sin(a)*rand(520,760));demons.push(d);}}
+function spawnDemons(n){for(let i=0;i<n;i++){const d=makeDemon(),a=rand(0,6.283);d.g.position.set(P.pos.x+Math.cos(a)*rand(520,760),P.pos.y+rand(-60,140),P.pos.z+Math.sin(a)*rand(520,760));d.g.position.y=demonAlt(d.g.position.x,d.g.position.z,d.g.position.y);demons.push(d);}}
 function spawnDragon(){dragon.alive=true;dragon.hp=dragon.max;dragon.dying=-1;dragon.cool=3.5;dragon.root.visible=true;$('boss').hidden=false;
   dragon.head.visible=true;dragon.head.position.copy(P.pos).addScaledVector(fwd,650);dragon.head.position.y=heightAt(dragon.head.position.x,dragon.head.position.z)-120;dragon.v.set(0,150,0);
   dragon.segs.forEach((s,i)=>{s.g.visible=true;s.g.position.copy(dragon.head.position);s.g.position.y-=(i+1)*SPACING;});
@@ -1141,7 +1151,7 @@ function updatePlayer(dt){
   else{sx=Math.sin(time*.3)*.22;sy=clamp((P.pos.y-320)*.004+P.pitch*1.2,-.4,.4);}
   P.yaw-=sx*(1.85+(P.speed>150?.25:0))*dt;P.pitch=clamp(P.pitch-sy*1.4*dt,-1.15,1.15); // virage plus vif (critique visée)
   const gy=heightAt(P.pos.x,P.pos.z);
-  if(state!=='dead'){if(P.pos.y<gy+110&&P.pitch<.3)P.pitch+=2.4*dt;if(P.pos.y>1500&&P.pitch>-.2)P.pitch-=1.8*dt;}
+  if(state!=='dead'){if(P.pos.y<gy+110&&P.pitch<.3)P.pitch+=2.4*dt;if(P.pos.y>SKY_CEIL&&P.pitch>-.2)P.pitch-=1.8*dt;}
   P.speed=lerp(P.speed,boost?195:112,1-Math.exp(-dt*3));
   const cp=Math.cos(P.pitch);fwd.set(-Math.sin(P.yaw)*cp,Math.sin(P.pitch),-Math.cos(P.yaw)*cp);
   P.vel.copy(fwd).multiplyScalar(P.speed);P.pos.addScaledVector(P.vel,dt);
@@ -1186,9 +1196,11 @@ function updateFires(dt){
     const rr=f.r+4.5;if(state==='play'&&P.dodgeT<=0&&f.m.position.distanceToSquared(P.pos)<rr*rr){damagePlayer(f.dmg);burst(P.pos,1.6,.55,.15,10,60,.45);f.life=0;}
     if(f.life<=0)f.m.visible=false;}
 }
+const SKY_CEIL=1500; // plafond de l'ange ; les démons restent dessous et au-dessus du relief, sinon ils deviennent inatteignables (blocage en vague 3)
+function demonAlt(x,z,y){return Math.max(heightAt(x,z)+40,Math.min(SKY_CEIL-40,y));}
 function updateDemons(dt){
   for(const d of demons){d.orbit+=dt*d.orbS;if(d.flash>0){d.flash=Math.max(0,d.flash-dt*6);if(d.mat)d.mat.emissiveIntensity=.45+d.flash*2.4;d.g.scale.setScalar(2.3*(1+d.flash*.08));}
-    tmp.set(P.pos.x+Math.cos(d.orbit)*d.rad,P.pos.y+d.h,P.pos.z+Math.sin(d.orbit)*d.rad).addScaledVector(fwd,90);
+    tmp.set(P.pos.x+Math.cos(d.orbit)*d.rad,P.pos.y+d.h,P.pos.z+Math.sin(d.orbit)*d.rad).addScaledVector(fwd,90);tmp.y=demonAlt(tmp.x,tmp.z,tmp.y);
     tmp.sub(d.g.position);const dist=tmp.length();tmp.normalize().multiplyScalar(Math.min(235,dist*1.6));
     d.v.lerp(tmp,1-Math.exp(-dt*2.2));d.g.position.addScaledVector(d.v,dt);d.g.lookAt(P.pos);
     const fl=Math.sin(time*8+d.ph)*.5;d.wr.rotation.y=-fl;d.wl.rotation.y=fl;
@@ -1291,6 +1303,6 @@ function frame(now){
   frameMs=lerp(frameMs,(performance.now()-now),.05);if(frameMs>30&&cloudPass.scale>.34&&time>4){cloudPass.scale=.34;cloudPass.setSize(cloudPass.w,cloudPass.h);}
   requestAnimationFrame(frame);
 }
-window.__dbg={fast(){cloudPass.enabled=false;for(const m of [roundT,cypT,walls,roofs])m.visible=false;},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
+window.__dbg={demonAlt,SKY_CEIL,fast(){cloudPass.enabled=false;for(const m of [roundT,roundF,cypT,walls,roofs])m.visible=false;},get veg(){return {near:roundT,far:roundF,R:VEG_NEAR,cx:vcx,cz:vcz};},get time(){return time;},get renderer(){return renderer;},get AU(){return AU;},get ac(){return ac;},get dragonHeads(){return dragon.heads;},input(x,y,f){mx=x;my=y;firing=f;},judge(){tryJudgement();},dodge(){tryDodge();},get lockT(){return lockT;},get fires(){return fires;},get wave(){return wave;},get phase(){return phase;},get score(){return score;},setDiff(i){setDiff(i);},hurt(d){damagePlayer(d);},get cloudPass(){return cloudPass;},win(){if(state==='play')win();},get camera(){return camera;},hit(){registerHit();},gain(n){gain(n,P.pos);},killWord,multiWord,rankOf,fmtN,get combo(){return combo;},get tuto(){return TUT;},get settings(){return SET;},get angelU(){return angelU;},boss(){for(const d of demons)scene.remove(d.g);demons.length=0;wave=3;pending=null;nextWave();pending.t=.1;},P,dragon,demons,get state(){return state;}};
 requestAnimationFrame(frame);
 </script>
