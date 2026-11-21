@@ -31,3 +31,12 @@ La simplification des têtes du Dragon a été essayée puis abandonnée (trous 
 | Lisibilité : écran brûlé pendant un tir du Dragon | 3,1 % | aucune | 2,8 % |
 
 La critique « interface » vérifie que les feuillus proches gardent leur maillage fin et que ceux du lointain passent au maillage simple.
+
+## Ronde 3
+
+| Critique | Avant | Correction | Après |
+|---|---|---|---|
+| Difficulté : débutant (Gardien) | victoire en 5 min 03, 57 PV au plus bas (ronde 1) | Gardien encaisse 20 % de dégâts en plus (décision de Kevin) | pas fini : 32 PV au plus bas, jamais mort, mais bloqué 568 s en vague 3 sans atteindre le Dragon |
+| Interface | 62/62 | contrôles des dégâts par difficulté et de l'aperçu de lien absolu | 64/64, aucune erreur |
+
+Le blocage en vague 3 rejoint celui déjà vu avec le pilote moyen (306 s en vague III, ronde 2). Les dégâts reçus n'y sont pour rien : ils ne changent ni le nombre de démons ni la façon dont le pilote les vise. Reste à comprendre pourquoi les pilotes n'achèvent pas la vague 3 sur cette machine lente.
