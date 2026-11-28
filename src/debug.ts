@@ -6,6 +6,7 @@ import type { Screens } from './ui/screens';
 import type { Hud } from './ui/hud';
 import type { DiffIndex } from './sim/config';
 import { fmtN, killWord, multiWord as multWordSafe, rankOf } from './sim/score';
+import { legacyDebug } from './debugCompat';
 
 export interface DebugApi {
   world: World;
@@ -38,6 +39,7 @@ declare global {
 
 export function installDebug(o: { world: World; gfx: GameRenderer; audio: AudioEngine; screens: Screens; hud: Hud }): void {
   const { world: w, gfx, screens } = o;
+  const legacy = legacyDebug(w, gfx, o.audio);
   window.__dbg = {
     world: w,
     get state() { return w.state; },
@@ -61,4 +63,6 @@ export function installDebug(o: { world: World; gfx: GameRenderer; audio: AudioE
     renderInfo: () => ({ calls: gfx.renderer.info.render.calls, triangles: gfx.renderer.info.render.triangles }),
     killWord, multiWord: multWordSafe, rankOf, fmtN,
   };
+  // propriétés des anciennes critiques, sans écraser l'API ci-dessus
+  for (const k of Object.keys(legacy)) if (!(k in window.__dbg)) Object.defineProperty(window.__dbg, k, Object.getOwnPropertyDescriptor(legacy, k) as PropertyDescriptor);
 }

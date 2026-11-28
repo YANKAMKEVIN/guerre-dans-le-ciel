@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "bot": "vitest run --config vitest.bot.config.ts",
     "e2e": "playwright test --trace off",
-    "check": "npm run typecheck && npm run lint && npm test && npm run bot && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test && npm run bot && npm run build",
+    "critiques": "node tests/critiques/critiques.cjs"
   },
   "dependencies": {
     "@fontsource/cinzel": "5.3.0",
