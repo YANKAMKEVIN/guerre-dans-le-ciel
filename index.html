@@ -60,13 +60,13 @@ body{background:var(--night);color:var(--ivory);font-family:var(--font-body);fon
 .crown.open{fill:#fff1c4;transform:scale(1.32);filter:drop-shadow(0 0 7px var(--ember)) drop-shadow(0 0 3px #fff)}
 .crown.dead{fill:rgba(8,10,26,.55);stroke:rgba(229,72,44,.6);transform:translateY(4px) rotate(14deg);opacity:.6;filter:none}
 #boss .label{color:var(--ember)}
-#banner{position:absolute;left:0;right:0;top:24%;text-align:center;padding-inline:max(16px,env(safe-area-inset-left,0px));opacity:0;transition:opacity .6s}
+#banner{pointer-events:none;position:absolute;left:0;right:0;top:24%;text-align:center;padding-inline:max(16px,env(safe-area-inset-left,0px));opacity:0;transition:opacity .6s}
 #banner.on{opacity:1}
 #banner h2{font-family:var(--font-display);font-weight:900;font-size:clamp(1.6rem,5vw,3rem);letter-spacing:.14em;margin:0;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.75)}
 #banner p{font-style:italic;font-size:clamp(.95rem,2.2vw,1.2rem);margin:.5em auto 0;max-width:34em;text-wrap:balance;text-shadow:0 1px 10px rgba(0,0,0,.85)}
 #cross{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:1.5px solid rgba(247,237,211,.8);border-radius:50%;box-shadow:0 0 10px rgba(243,197,82,.6)}
 #cross::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:var(--gold);border-radius:50%}
-.arrow{position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--ember);filter:drop-shadow(0 0 6px rgba(229,72,44,.9))}
+.arrow{pointer-events:none;position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--ember);filter:drop-shadow(0 0 6px rgba(229,72,44,.9))}
 .arrow.boss{width:30px;height:30px;border:0;background:var(--ember);clip-path:polygon(0 0,100% 50%,0 100%,32% 50%);filter:drop-shadow(0 0 2px var(--gold)) drop-shadow(0 0 8px rgba(229,72,44,.95))}
 /* boule de feu qui arrive hors champ : arc orange du côté d'où elle vient, plus vif à mesure qu'elle approche */
 .farc{position:absolute;width:46px;height:170px;margin:-85px 0 0 -23px;border-radius:50%;border-right:7px solid #ffa23a;filter:drop-shadow(0 0 12px rgba(255,130,30,.95));pointer-events:none}
