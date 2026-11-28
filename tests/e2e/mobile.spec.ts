@@ -55,7 +55,11 @@ test.describe('téléphone en paysage', () => {
     await page.locator('#resume').tap();
     await expect(page.locator('#pause')).toBeHidden();
     // fin de partie et retour au menu, toujours au doigt
+    // L'esquive rend invulnérable pendant 0,45 s de temps de jeu (comme dans l'original) et la pause gèle
+    // ce temps : sur une machine lente, l'esquive peut encore durer ici. On attend qu'elle soit finie.
+    await until(page, "W.player.dodgeT === 0 && D.state === 'play'");
     await dbg(page, 'D.hurt(999)');
+    expect(await dbg<string>(page, 'D.state')).toBe('dead');
     await expect(page.locator('#dead')).toBeVisible({ timeout: 30_000 });
     await page.locator('#deadMenu').tap();
     await expect(page.locator('#menu')).toBeVisible();
