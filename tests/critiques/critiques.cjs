@@ -1,25 +1,23 @@
 // Critiques automatiques : des pilotes jouent le jeu et rendent un rapport chiffré.
-// Usage : cd tests && npm install && node critiques.js [nom...]
-// Prérequis : Playwright et son Chromium, installés à part (npm i -g playwright && npx playwright install chromium) ; ils ne sont pas dans package.json.
-// Critiques : visee, moyen, debutant, perf, lisibilite, interface, son. Sans argument, toutes.
+// Usage (à la racine du dépôt) : npm run build && node tests/critiques/critiques.cjs [nom...]
+// Le build est servi par « vite preview » sur un port libre (CRITIQUES_URL pour viser un serveur déjà lancé).
+// Playwright vient des dépendances du projet (@playwright/test) ; Chromium doit être installé (npx playwright install chromium).
+// Critiques : visee, moyen, debutant, debutant_pelerin, expert_archange, perf, lisibilite, interface, son. Sans argument, toutes.
 // Le rapport est écrit dans tests/out/rapport.json, les captures dans tests/out/.
-let chromium;try{({chromium}=require('playwright'));}catch(e){console.error('Playwright introuvable : installez-le (npm i -g playwright && npx playwright install chromium), puis relancez avec NODE_PATH="$(npm root -g)" node critiques.js');process.exit(1);}
-const fs=require('fs'),path=require('path');
-const ROOT=path.resolve(__dirname,'..'),OUT=path.join(__dirname,'out');
+// Les parties complètes sans rendu sont jouées par le bot (npm run bot) ; ces critiques mesurent le jeu rendu, en temps réel.
+let chromium;try{({chromium}=require('playwright'));}catch(e){try{({chromium}=require('@playwright/test'));}catch(e2){console.error('Playwright introuvable : npm ci à la racine du dépôt, puis npx playwright install chromium');process.exit(1);}}
+const fs=require('fs'),path=require('path'),{spawn}=require('child_process');
+const ROOT=path.resolve(__dirname,'..','..'),OUT=path.join(ROOT,'tests','out');
 fs.mkdirSync(OUT,{recursive:true});
-const THREE_DIR=path.join(__dirname,'node_modules','three');
-const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}html,body{height:100%}</style></head><body>'
-  +fs.readFileSync(path.join(ROOT,'index.html'),'utf8')+'</body></html>';
+const PORT=5848+Math.floor(Math.random()*100);
+const BASE=process.env.CRITIQUES_URL||('http://localhost:'+PORT+'/');
+let server=null;
 
 async function open(browser,{w=480,h=270,diff=1,touch=false,play=true}={}){
   const p=await browser.newPage({viewport:{width:w,height:h},hasTouch:touch,isMobile:touch});p.setDefaultTimeout(120000);const errs=[]; // large : le rendu logiciel peut être très lent
   p.on('pageerror',e=>errs.push(e.message));
   p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|GPU stall/.test(m.text()))errs.push(m.text().slice(0,200));});
-  await p.route('https://cdn.jsdelivr.net/npm/three@0.160.0/**',r=>r.fulfill({body:fs.readFileSync(path.join(THREE_DIR,r.request().url().split('three@0.160.0/')[1])),contentType:'application/javascript'}));
-  await p.route('https://fonts.googleapis.com/**',r=>r.abort());
-  await p.route(/http:\/\/jeu\.local\/.+/,r=>{const f=path.join(ROOT,decodeURIComponent(r.request().url().split('/').pop()));fs.existsSync(f)?r.fulfill({body:fs.readFileSync(f)}):r.abort();});
-  await p.route('http://jeu.local/',r=>r.fulfill({body:html,contentType:'text/html'}));
-  await p.goto('http://jeu.local/');
+  await p.goto(BASE);
   await p.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:90000});
   await p.evaluate(d=>__dbg.setDiff(d),diff);
   if(play)await p.click('#play');
@@ -181,7 +179,7 @@ const CRITIQUES={
       P.pos.y=600;set('sens2',100);set('invY2',false);const up=await turn(0,-.6,'pitch');set('invY2',true);const inv=await turn(0,-.6,'pitch');set('invY2',false);
       r.inversion_haut_bas=up>.05&&inv<-.05&&$('invY').checked===false;
       const y1=Math.abs(await turn(.5,0,'yaw'));set('sens',50);const y2=Math.abs(await turn(.5,0,'yaw'));
-      r.sensibilite=y2<y1*.75&&y2>y1*.3&&$('sens2').value==='50'&&JSON.parse(localStorage.getItem('gdc-set')).sens===.5;set('sens',100);P.pitch=0;return r;}));
+      r.sensibilite=y2<y1*.75&&y2>y1*.3&&$('sens2').value==='50'&&JSON.parse(localStorage.getItem('gdc-save')).settings.sens===.5;set('sens',100);P.pitch=0;return r;}));
     // pause et écrans de fin : retour au menu, rappel des commandes, difficulté ajustable après une défaite
     Object.assign(ok,await p.evaluate(async()=>{const D=__dbg,r={},wait=ms=>new Promise(x=>setTimeout(x,ms)),$=id=>document.getElementById(id),vis=id=>!$(id).hidden;
       const until=async(f,s=20)=>{const t0=performance.now();while(!f()&&performance.now()-t0<s*1000)await wait(30);return !!f();},chk=d=>document.querySelector('#menu .diff [data-d="'+d+'"]').getAttribute('aria-checked')==='true';
@@ -227,6 +225,11 @@ const CRITIQUES={
 };
 
 (async()=>{
+  if(!process.env.CRITIQUES_URL){
+    if(!fs.existsSync(path.join(ROOT,'dist','index.html'))){console.error('Lancez d’abord npm run build');process.exit(1);}
+    server=spawn('npx',['vite','preview','--port',String(PORT),'--strictPort'],{cwd:ROOT,stdio:'ignore'});
+    for(let i=0;i<60;i++){try{await fetch(BASE);break;}catch(e){await new Promise(r=>setTimeout(r,500));}}
+  }
   const want=process.argv.slice(2).length?process.argv.slice(2):Object.keys(CRITIQUES);
   const browser=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--autoplay-policy=no-user-gesture-required']});
   const rep={date:new Date().toISOString()};
@@ -234,5 +237,5 @@ const CRITIQUES={
     try{rep[k]=await CRITIQUES[k](browser);}catch(e){rep[k]={echec:String(e).slice(0,300)};}
     rep[k].temps_reel_s=Math.round((Date.now()-t)/1000);process.stdout.write(JSON.stringify(rep[k])+'\n');
     fs.writeFileSync(path.join(OUT,'rapport.json'),JSON.stringify(rep,null,2));}
-  await browser.close();
+  await browser.close();if(server)server.kill();
 })();

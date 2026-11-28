@@ -1,6 +1,6 @@
 # Rondes de critiques
 
-Chaque version est jouée par des pilotes automatiques avant d'être confiée au joueur (`cd tests && npm install && node critiques.js`). Playwright et son Chromium s'installent à part : `npm i -g playwright && npx playwright install chromium`, puis `NODE_PATH="$(npm root -g)" node critiques.js`. Les durées sont en temps de jeu, comme sur une machine normale à 60 images par seconde.
+Chaque version est jouée par des pilotes automatiques avant d'être confiée au joueur : `npm run build && npm run critiques` (ou `npm run critiques -- interface perf` pour quelques critiques). Le build est servi en local et joué dans Chromium (WebGL logiciel) ; le rapport va dans `tests/out/rapport.json`. Les durées sont en temps de jeu, comme sur une machine normale à 60 images par seconde. Depuis la migration TypeScript, les parties complètes sans rendu sont aussi jouées à chaque CI par le bot (`npm run bot`, voir `tests/bot`), avec le hasard figé par des graines.
 
 ## Ronde 1
 
